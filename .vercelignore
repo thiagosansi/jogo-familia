@@ -24,3 +24,9 @@ node_modules
 # para dentro do que vai ao ar. Guarda permanente — sobrevive a alguém
 # recopiar a pasta.
 public/personagens/
+
+# O Agent tool (Claude Code) cria linked worktrees em .claude/worktrees/ ao
+# paralelizar tarefas. Um deploy rodado da máquina empacota o disco como ele
+# está, então essas cópias do repositório (cada uma podendo chegar a GBs)
+# subiriam junto se não fossem ignoradas aqui.
+.claude/worktrees/

@@ -21,3 +21,5 @@ imagens/
 # painel dos pais (importação de pasta → IndexedDB do aparelho).
 public/personagens/
 .vercel
+
+.claude/worktrees/
