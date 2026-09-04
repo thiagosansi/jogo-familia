@@ -1,10 +1,12 @@
 /**
- * Testes do modo "contar de 1 a 5". Node puro, nenhum DOM:
+ * Testes do modo "contar de 1 a 10". Node puro, nenhum DOM:
  *
  *   node --test --experimental-strip-types src/game/modos/contar.test.ts
  *
- * Foco: nunca passar de 5, falar o número a cada toque e o total no fim, e
- * NUNCA contar duas vezes o mesmo bichinho.
+ * Foco: nunca passar de 10 (o teto subiu de 5 quando a criança fez 5 anos —
+ * ver o cabeçalho de `contar.ts`), começar a progressão em 1 mesmo assim,
+ * falar o número a cada toque e o total no fim, e NUNCA contar duas vezes o
+ * mesmo bichinho.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -23,6 +25,7 @@ import {
   falaDoTotal,
   jaContado,
   limitarQuantidade,
+  numeroPorExtenso,
   proximaRodadaContar,
   quantidadeContada,
   repetirPergunta,
@@ -43,27 +46,29 @@ function contarTudo(estado: EstadoContagem) {
   return { estado: atual, falado };
 }
 
-// ---------------------------------------------------- nunca passa de 5
+// --------------------------------------------------- nunca passa de 10
 
-test("a contagem nunca passa de 5, venha de onde vier a quantidade", () => {
-  assert.equal(MAX_CONTAGEM, 5);
-  for (const pedido of [0, -3, 1, 5, 6, 9, 42, Number.NaN, 3.4]) {
+test("a contagem nunca passa de 10, venha de onde vier a quantidade", () => {
+  assert.equal(MAX_CONTAGEM, 10, "o teto do modo Contar é 10 (era 5 aos 3 anos)");
+  for (const pedido of [0, -3, 1, 5, 10, 11, 42, Number.NaN, 3.4]) {
     const estado = criarContagem({ quantidade: pedido, sortear: SORTEAR });
     assert.ok(
       estado.objetos.length >= MIN_CONTAGEM && estado.objetos.length <= MAX_CONTAGEM,
       `quantidade ${pedido} virou ${estado.objetos.length} objetos`,
     );
   }
-  assert.equal(limitarQuantidade(99), 5);
+  assert.equal(limitarQuantidade(99), 10);
   assert.equal(limitarQuantidade(0), 1);
+  // Quem pede um teto MENOR continua sendo respeitado (o motor é injetável).
+  assert.equal(limitarQuantidade(99, 5), 5);
 });
 
-test("a progressão de rodadas sobe de 1 até 5 e nunca ultrapassa", () => {
+test("a progressão de rodadas começa em 1, sobe até 10 e nunca ultrapassa", () => {
   let rodada = proximaRodadaContar(null, SORTEAR);
   assert.equal(rodada.quantidade, 1, "a primeira rodada começa com 1 bichinho");
   const vistos: number[] = [rodada.quantidade];
 
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 400; i++) {
     const anterior = rodada;
     rodada = proximaRodadaContar(anterior, SORTEAR);
     assert.ok(
@@ -73,14 +78,29 @@ test("a progressão de rodadas sobe de 1 até 5 e nunca ultrapassa", () => {
     assert.notEqual(rodada.forma, anterior.forma, "a silhueta muda a cada rodada");
     vistos.push(rodada.quantidade);
   }
-  assert.deepEqual(vistos.slice(0, 5), [1, 2, 3, 4, 5], "progressão crescente até o teto");
-  assert.equal(Math.max(...vistos), 5);
+  assert.deepEqual(
+    vistos.slice(0, 10),
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "progressão crescente de 1 em 1 até o teto",
+  );
+  assert.equal(Math.max(...vistos), 10);
+  // Depois do teto o pool é 2..10 — nunca volta para 1 (seria sem graça).
+  assert.equal(
+    vistos.slice(10).includes(1),
+    false,
+    "chegando no teto, o sorteio nunca devolve 1",
+  );
+  // E, ao longo de 400 rodadas, o sorteio cobre a faixa inteira acima de 5:
+  // é o que garante que o teto novo não ficou só no `limitarQuantidade`.
+  for (const n of [6, 7, 8, 9, 10]) {
+    assert.ok(vistos.includes(n), `a quantidade ${n} tem que aparecer em alguma rodada`);
+  }
 });
 
 // ------------------------------------------ fala o número e depois o total
 
 test("cada toque fala o número em pt-BR, na ordem, e o último fala o total", () => {
-  const estado = criarContagem({ quantidade: 5, forma: "peixe", sortear: SORTEAR });
+  const estado = criarContagem({ quantidade: MAX_CONTAGEM, forma: "peixe", sortear: SORTEAR });
   const { estado: fim, falado } = contarTudo(estado);
 
   assert.deepEqual(falado, [
@@ -89,11 +109,16 @@ test("cada toque fala o número em pt-BR, na ordem, e o último fala o total", (
     "três",
     "quatro",
     "cinco",
-    "São cinco peixinhos!",
+    "seis",
+    "sete",
+    "oito",
+    "nove",
+    "dez",
+    "São dez peixinhos!",
   ]);
   assert.equal(fim.fase, "total");
   assert.equal(contagemCompleta(fim), true);
-  assert.equal(quantidadeContada(fim), 5);
+  assert.equal(quantidadeContada(fim), 10);
 });
 
 test("o número sai com prioridade alta e o total entra na fila depois dele", () => {
@@ -122,9 +147,32 @@ test("o total concorda em gênero e número (pt-BR)", () => {
   assert.equal(falaDoTotal(3, "estrela"), "São três estrelas do mar!");
   assert.equal(falaDoTotal(4, "aguaViva"), "São quatro águas-vivas!");
   assert.equal(falaDoTotal(5, "bolha"), "São cinco bolhas!");
-  // Mesmo pedindo além do teto, a frase fica em 5.
-  assert.equal(falaDoTotal(9, "bolha"), "São cinco bolhas!");
-  assert.deepEqual([...NUMEROS], ["um", "dois", "três", "quatro", "cinco"]);
+  assert.equal(falaDoTotal(7, "peixe"), "São sete peixinhos!");
+  assert.equal(falaDoTotal(10, "concha"), "São dez conchas!");
+  // Mesmo pedindo além do teto, a frase fica em 10.
+  assert.equal(falaDoTotal(42, "bolha"), "São dez bolhas!");
+  assert.deepEqual(
+    [...NUMEROS],
+    ["um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"],
+  );
+  assert.equal(NUMEROS.length, MAX_CONTAGEM, "uma palavra por número até o teto");
+});
+
+test("numeroPorExtenso concorda em gênero e nunca devolve `undefined`", () => {
+  // A forma canônica (masculina) é o padrão: é assim que se conta em voz alta.
+  assert.equal(numeroPorExtenso(1), "um");
+  assert.equal(numeroPorExtenso(2), "dois");
+  assert.equal(numeroPorExtenso(1, "f"), "uma");
+  assert.equal(numeroPorExtenso(2, "f"), "duas");
+  // De três em diante o número é invariável nos dois gêneros.
+  for (let n = 3; n <= MAX_CONTAGEM; n++) {
+    assert.equal(numeroPorExtenso(n, "m"), numeroPorExtenso(n, "f"), `${n} é invariável`);
+  }
+  assert.equal(numeroPorExtenso(10), "dez");
+  // Fora da faixa cai no algarismo em vez de `undefined` — não existe rodada
+  // assim, mas nada aqui pode chegar quebrado na frente da criança.
+  assert.equal(numeroPorExtenso(0), "0");
+  assert.equal(numeroPorExtenso(11), "11");
 });
 
 test("rodada de 1 objeto fala o número e o total no mesmo toque", () => {

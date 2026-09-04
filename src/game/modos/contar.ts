@@ -1,26 +1,38 @@
 /**
- * MODO "CONTAR DE 1 A 5" — máquina de contagem PURA (sem React, sem DOM,
+ * MODO "CONTAR DE 1 A 10" — máquina de contagem PURA (sem React, sem DOM,
  * sem timers). Roda em node: `node --test --experimental-strip-types`.
  *
- * MECÂNICA: a tela mostra de 1 a 5 bichinhos iguais. Cada toque MARCA um
+ * MECÂNICA: a tela mostra de 1 a 10 bichinhos iguais. Cada toque MARCA um
  * bichinho e FALA o número em voz alta ("um... dois... três"); quando o último
  * é marcado, o jogo fala o total ("São três peixinhos!"). Não há número
  * escrito para ler, não há conta, não há placar e não há como errar — tocar em
  * algo já contado simplesmente não faz nada (nem conta, nem fala).
  *
- * MOTOR REUSADO POR OUTRO MODO (inglês): as PALAVRAS da contagem e o TETO de
- * objetos são injetáveis (`OpcoesContagem.falas` / `OpcoesContagem.maximo`),
- * com o pacote pt-BR e o teto 5 como PADRÃO. O baralho de números do modo
- * inglês (`ingles.ts`) reaproveita esta mesma máquina de estados passando
- * "one, two, three…" e teto 10 — em vez de duplicar as regras de "não conta
- * duas vezes", "ordem livre" e "não existe perder", que são justamente as
- * partes difíceis de acertar. Quem NÃO passa nada continua com o modo Contar
- * de sempre, byte a byte.
+ * TETO 10 (ERA 5) — MUDOU O PÚBLICO, NÃO A MECÂNICA
+ * -------------------------------------------------
+ * Este cabeçalho dizia "criança de 3 anos conta até 5". A MESMA criança tem 5
+ * anos agora, e o teto subiu para 10 (`MAX_CONTAGEM`): é a faixa que se ensina
+ * na pré-escola, e é a que o baralho de números do inglês — que sempre pediu
+ * `maximo: 10` por escrito — já usava.
+ *
+ * A PROGRESSÃO CONTINUA COMEÇANDO EM 1, de propósito. A primeira rodada é um
+ * bichinho só e sobe de um em um (1, 2, 3… 10). Subir o teto não é "começar
+ * mais difícil": é ter para onde ir depois do 5. Chegando no 10,
+ * `proximaRodadaContar` volta a sortear entre 2 e 10 (ver lá).
+ *
+ * MOTOR REUSADO POR OUTROS MODOS (inglês, números): as PALAVRAS da contagem e
+ * o TETO de objetos são injetáveis (`OpcoesContagem.falas` /
+ * `OpcoesContagem.maximo`), com o pacote pt-BR e o teto 10 como PADRÃO. O
+ * baralho de números do modo inglês (`ingles.ts`) reaproveita esta mesma
+ * máquina de estados passando "one, two, three…" — em vez de duplicar as
+ * regras de "não conta duas vezes", "ordem livre" e "não existe perder", que
+ * são justamente as partes difíceis de acertar. Quem NÃO passa nada continua
+ * com o modo Contar de sempre.
  *
  * INVARIANTES (cobertos por contar.test.ts)
- *  1. A contagem NUNCA passa de 5 (`MAX_CONTAGEM`) no modo Contar — nem por
- *     config nem por sorteio da próxima rodada. O teto só sobe quando quem
- *     chama pede `maximo` explicitamente (o inglês conta até 10).
+ *  1. A contagem NUNCA passa de 10 (`MAX_CONTAGEM`) no modo Contar — nem por
+ *     config nem por sorteio da próxima rodada. Quem quiser um teto MENOR
+ *     (uma fase inicial, por exemplo) passa `maximo` explicitamente.
  *  2. O mesmo objeto não incrementa duas vezes: `contarObjeto` devolve
  *     `mudou: false` e `falas: []` para um objeto já contado (duplo toque,
  *     multi-touch, criança martelando).
@@ -42,21 +54,52 @@ import { CORES, FORMAS, type FormaObjeto, type Genero } from "./cores.ts";
 // -------------------------------------------------------------- constantes
 
 export const MIN_CONTAGEM = 1;
-/** Teto pedagógico: criança de 3 anos conta até 5. Nunca mais que isso. */
-export const MAX_CONTAGEM = 5;
+/**
+ * Teto pedagógico do modo Contar: a criança (5 anos) conta até 10. Nunca mais
+ * que isso — ver o cabeçalho para o porquê da subida de 5 para 10.
+ */
+export const MAX_CONTAGEM = 10;
 
 /**
  * Números falados na contagem. Forma canônica (é assim que se ensina a
  * contar em voz alta: "um, dois, três"), independente do gênero do bichinho —
  * a concordância aparece só na frase do total ("São duas conchas!").
  */
-export const NUMEROS: readonly string[] = ["um", "dois", "três", "quatro", "cinco"];
+export const NUMEROS: readonly string[] = [
+  "um",
+  "dois",
+  "três",
+  "quatro",
+  "cinco",
+  "seis",
+  "sete",
+  "oito",
+  "nove",
+  "dez",
+];
 
 /** "um/uma" e "dois/duas" concordam; de três em diante é invariável. */
-const NUMEROS_COM_GENERO: Readonly<Record<Genero, readonly string[]>> = {
-  m: ["um", "dois", "três", "quatro", "cinco"],
-  f: ["uma", "duas", "três", "quatro", "cinco"],
+export const NUMEROS_COM_GENERO: Readonly<Record<Genero, readonly string[]>> = {
+  m: ["um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"],
+  f: ["uma", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"],
 };
+
+/**
+ * O número por extenso, já concordando com o gênero do substantivo que vem
+ * depois ("uma concha", "dois peixinhos", "seis peixinhos").
+ *
+ * Exportado porque o modo Números (`numeros.ts`) monta as PRÓPRIAS frases
+ * ("Quantos peixinhos tem?" → "São seis peixinhos!") a partir das MESMAS
+ * palavras que a criança já ouve contando aqui. Duas listas de números por
+ * extenso no projeto seria uma a mais — e a segunda divergiria da primeira na
+ * primeira mudança de teto.
+ *
+ * Fora de 1..`MAX_CONTAGEM` cai no algarismo (`String(n)`): não existe rodada
+ * assim, mas a função nunca devolve `undefined` na frente da criança.
+ */
+export function numeroPorExtenso(n: number, genero: Genero = "m"): string {
+  return NUMEROS_COM_GENERO[genero][Math.round(n) - 1] ?? String(n);
+}
 
 /**
  * TUDO o que esta máquina fala, num pacote injetável — é o que permite o modo
@@ -140,10 +183,10 @@ export interface OpcoesContagem {
   cor?: string;
   sortear?: Sorteio;
   /**
-   * Teto de objetos. Padrão `MAX_CONTAGEM` (5) — o teto pedagógico do modo
-   * Contar em pt-BR, que ninguém deve mexer. O baralho de números do inglês
-   * ensina até "ten", então passa 10 aqui: são objetivos diferentes (lá a
-   * criança escolhe entre quantidades desenhadas, aqui ela conta na mão).
+   * Teto de objetos. Padrão `MAX_CONTAGEM` (10) — o teto pedagógico do modo
+   * Contar em pt-BR, que ninguém deve mexer. Quem quiser um teto MENOR (uma
+   * fase inicial, por exemplo) passa `maximo` explícito; o baralho de números
+   * do inglês passa `maximo: 10` por escrito, e continua valendo.
    */
   maximo?: number;
   /** Palavras faladas. Padrão: `FALAS_CONTAGEM_PT_BR`. */
@@ -161,7 +204,7 @@ export function corDaForma(forma: FormaObjeto): string {
 
 /**
  * Limita a quantidade ao intervalo 1..`maximo`. O padrão é o teto pedagógico
- * de 5 do modo Contar — quem não passa `maximo` continua limitado a 5.
+ * de 10 do modo Contar — quem não passa `maximo` continua limitado a 10.
  */
 export function limitarQuantidade(valor: number, maximo: number = MAX_CONTAGEM): number {
   const teto = Math.max(MIN_CONTAGEM, Math.round(Number(maximo)) || MAX_CONTAGEM);
@@ -310,7 +353,7 @@ export function contagemCompleta(estado: EstadoContagem): boolean {
 export function falaDoTotal(n: number, forma: FormaObjeto): string {
   const info = FORMAS[forma];
   const total = limitarQuantidade(n);
-  const numero = NUMEROS_COM_GENERO[info.genero][total - 1] ?? String(total);
+  const numero = numeroPorExtenso(total, info.genero);
   return total === 1
     ? `É ${numero} ${info.singular}!`
     : `São ${numero} ${info.plural}!`;
@@ -324,9 +367,10 @@ export interface RodadaContar {
 }
 
 /**
- * Progressão: começa em 1 e sobe de um em um até 5; chegando no teto, sorteia
- * de novo entre 2 e 5 (nunca acima de `MAX_CONTAGEM`). A forma muda a cada
- * rodada para a criança não decorar a silhueta em vez de contar.
+ * Progressão: começa em 1 e sobe de um em um até 10; chegando no teto, sorteia
+ * de novo entre 2 e 10 (nunca acima de `MAX_CONTAGEM`). Começar em 1 mesmo com
+ * o teto em 10 é intencional — ver o cabeçalho. A forma muda a cada rodada
+ * para a criança não decorar a silhueta em vez de contar.
  */
 export function proximaRodadaContar(
   anterior: RodadaContar | null = null,
@@ -341,7 +385,9 @@ export function proximaRodadaContar(
   const atual = limitarQuantidade(anterior.quantidade);
   if (atual < MAX_CONTAGEM) return { quantidade: atual + 1, forma };
 
-  // No teto: sorteia entre 2 e 5 (voltar para 1 depois de contar 5 é sem graça).
-  const opcoes = [2, 3, 4, 5].filter((n) => n <= MAX_CONTAGEM);
+  // No teto: sorteia entre 2 e 10 (voltar para 1 depois de contar 10 é sem
+  // graça). O pool é DERIVADO de `MAX_CONTAGEM`, não escrito à mão: mudar o
+  // teto num lugar só continua mudando o sorteio junto.
+  const opcoes = Array.from({ length: MAX_CONTAGEM - 1 }, (_, i) => i + 2);
   return { quantidade: embaralhar(opcoes, sortear)[0], forma };
 }

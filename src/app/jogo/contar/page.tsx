@@ -1,13 +1,16 @@
 "use client";
 
 /**
- * /jogo/contar — mini-jogo "contar de 1 a 5" (eixo 3).
+ * /jogo/contar — mini-jogo "contar de 1 a 10" (eixo 3).
  *
- * MECÂNICA: a tela mostra de 1 a 5 bichinhos iguais. Cada toque marca um deles
- * com um visto e FALA o número em voz alta ("um... dois... três"); ao marcar o
- * último, o jogo fala o total ("São três peixinhos!"). A criança conta na ordem
- * que quiser, e tocar de novo num bichinho já contado não faz nada — nem conta,
- * nem fala (a regra mora em `@/game/modos/contar`, coberta por `contar.test.ts`).
+ * MECÂNICA: a tela mostra de 1 a 10 bichinhos iguais (o teto era 5 quando a
+ * criança tinha 3 anos — ver `MAX_CONTAGEM` no cabeçalho de
+ * `@/game/modos/contar`; a progressão continua começando em 1). Cada toque
+ * marca um deles com um visto e FALA o número em voz alta ("um... dois...
+ * três"); ao marcar o último, o jogo fala o total ("São três peixinhos!"). A
+ * criança conta na ordem que quiser, e tocar de novo num bichinho já contado
+ * não faz nada — nem conta, nem fala (a regra mora em `@/game/modos/contar`,
+ * coberta por `contar.test.ts`).
  *
  * SEM NUMERAL ESCRITO: o progresso aparece como bolinhas que enchem, não como
  * dígito. Nada aqui exige leitura. E não há placar, cronômetro nem erro.

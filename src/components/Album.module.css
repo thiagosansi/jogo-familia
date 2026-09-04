@@ -107,8 +107,16 @@
   user-select: none;
 }
 
-/* Cardume do modo contar: a QUANTIDADE é o desenho (nunca o numeral). */
+/* Cardume do modo contar: a QUANTIDADE é o desenho (nunca o numeral).
+
+   `--colunas` vem do `<Album>` (ver `desenho.tipo === "cardume"` em
+   Album.tsx), calculado a partir da quantidade. Com 40% fixos por peixinho a
+   figurinha só cabia até 4 (duas fileiras); desde que o modo Contar passou a
+   ir até 10, dez peixinhos a 40% dariam CINCO fileiras — 200% da altura da
+   bolha, ou seja, transbordo. Com a largura derivada do número de colunas o
+   cardume sempre fecha em no máximo três fileiras dentro do círculo. */
 .cardume {
+  --colunas: 2;
   display: flex;
   flex-wrap: wrap;
   align-content: center;
@@ -116,8 +124,9 @@
   gap: 4%;
 }
 .cardume > * {
-  inline-size: 40%;
+  inline-size: calc((100% - (var(--colunas) - 1) * 4%) / var(--colunas));
   block-size: auto;
+  flex: 0 0 auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

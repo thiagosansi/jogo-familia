@@ -58,7 +58,9 @@ test("id desconhecido vira mascote em vez de estourar", () => {
     "",
     "sei-la",
     "cor-inexistente",
-    "contar-9",
+    // O cardume vai de 1 a `MAX_CONTAGEM` (10, desde que o modo Contar
+    // passou a contar até 10): 11 está fora e cai no mascote.
+    "contar-11",
     "animal-dinossauro",
     "familia-",
     // O eixo "ingles" existe (ver eixoDaFigurinha), mas o catálogo de

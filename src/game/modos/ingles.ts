@@ -228,8 +228,11 @@ export const FALAS_CONTAGEM_NUMEROS_INGLES: FalasContagem = {
  * dentro da própria alternativa de números (ver `ConteudoAlternativa` em
  * `/jogo/ingles/page.tsx`) — o peixinho que a criança viu na alternativa é o
  * mesmo que ela toca na contagem, sem uma forma nova para reconhecer no meio
- * do reforço. `maximo: 10` é o teto do baralho de números (o modo Contar em
- * pt-BR continua limitado a 5 — ver `MAX_CONTAGEM` em `contar.ts`, intocado).
+ * do reforço. `maximo: 10` é o teto do baralho de números, escrito aqui de
+ * propósito: hoje é o MESMO valor de `MAX_CONTAGEM` (o modo Contar também vai
+ * até 10 desde que a criança fez 5 anos), mas os dois tetos são decisões
+ * independentes — este baralho ensina "one…ten" e não deve seguir uma futura
+ * mudança do teto pedagógico do pt-BR.
  * `pergunta`, quando informada, é só o texto mostrado no `<Palco>` durante a
  * contagem — a página decide se fala esse texto ou não.
  */

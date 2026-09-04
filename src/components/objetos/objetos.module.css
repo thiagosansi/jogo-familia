@@ -1,4 +1,4 @@
-/* Estilos dos modos "cores e formas" e "contar de 1 a 5".
+/* Estilos dos modos "cores e formas", "contar de 1 a 10" e "números".
    Tudo em cima dos tokens de globals.css (--toque-min, --gap, --anim-*), então
    `prefers-reduced-motion` já desliga o movimento sem precisar de exceção. */
 
@@ -136,9 +136,16 @@
 }
 
 /* Progresso da contagem: uma bolinha por bichinho, cheia conforme conta.
-   É a leitura visual do "quantos já contei" — de novo, sem numeral. */
+   É a leitura visual do "quantos já contei" — de novo, sem numeral.
+
+   `flex-wrap: wrap` porque o teto do modo passou de 5 para 10 bolinhas: em
+   celular estreito (retrato) dez bolinhas de até 30px mais os gaps não cabem
+   numa linha, e sem a quebra elas encolheriam/estourariam a caixa de
+   feedback. Quebrando, viram duas fileiras de cinco — o que também é uma
+   leitura melhor da quantidade. */
 .pontos {
   display: flex;
+  flex-wrap: wrap;
   gap: clamp(8px, 2vmin, 16px);
   align-items: center;
   justify-content: center;
