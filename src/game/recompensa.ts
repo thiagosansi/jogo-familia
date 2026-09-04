@@ -10,6 +10,8 @@
  *   contar-<1..5>              → o cardume que ela contou   (contar.ts)
  *   animal-<idAnimal>          → o bicho que ela adivinhou  (animais.ts)
  *   ingles-<idPalavra>         → a palavra que ela ouviu    (ingles.ts)
+ *   letra-<A..Z>               → a letra que ela achou      (letras.ts)
+ *   memoria-<formaObjeto>      → o par que ela virou        (memoria.ts)
  *
  * Este arquivo é o ÚNICO lugar que sabe traduzir esses ids em desenho, nome e
  * posição. O `<Album>` só desenha o que ele mandar — assim um id novo (ou de
@@ -38,6 +40,8 @@ export const PREFIXO: Record<Eixo, string> = {
   contar: "contar-",
   animais: "animal-",
   ingles: "ingles-",
+  letras: "letra-",
+  memoria: "memoria-",
 };
 
 /** Monta o id de figurinha de um eixo. Use SEMPRE isto nos mini-jogos. */
@@ -68,6 +72,16 @@ export const TOTAL_DO_EIXO: Record<Eixo, number | null> = {
   // src/app/pais/progresso/page.tsx) já trata `null` mostrando só a
   // contagem ganha, sem denominador.
   ingles: null,
+  // `letras` e `memoria` também são `null`, pelo mesmo motivo dos dois acima:
+  // o total depende do que o adulto cadastrou. Em "letras" as âncoras vêm do
+  // nome da criança e dos nomes da família (`Config.nomeCrianca` +
+  // `listarPersonagens`), então quantas das 26 letras chegam a virar
+  // figurinha muda de aparelho para aparelho; em "memória" as cartas incluem
+  // as fotos cadastradas. Um denominador fixo seria sempre errado para
+  // alguém — `fraseDoEixo` (src/app/pais/progresso/page.tsx) já trata `null`
+  // mostrando só a contagem ganha, sem denominador.
+  letras: null,
+  memoria: null,
 };
 
 /** Nome do eixo em português, para o relatório do adulto. */
@@ -77,6 +91,8 @@ export const NOME_DO_EIXO: Record<Eixo, string> = {
   contar: "Contar até 5",
   animais: "Animais",
   ingles: "Primeiras palavras em inglês",
+  letras: "Letras e sons",
+  memoria: "Jogo da memória",
 };
 
 // ------------------------------------------------------------------ desenhos
@@ -92,6 +108,20 @@ export type DesenhoFigurinha =
   | { tipo: "cardume"; quantidade: number; forma: FormaObjeto; cor: string }
   /** Bicho do modo animais. */
   | { tipo: "bicho"; qual: IdAnimal }
+  /**
+   * Letra do modo "letras": o GLIFO é o desenho (o `<Album>` mostra um "P"
+   * grande dentro da bolha). É a única figurinha com texto, e é de propósito:
+   * a letra não tem silhueta que a substitua — ela É o símbolo que a criança
+   * está aprendendo a reconhecer. Isso não abre exceção para número: número
+   * na tela da criança continua proibido (ver o cabeçalho).
+   */
+  | { tipo: "letra"; letra: string }
+  /**
+   * Carta do jogo da memória: a mesma peça do fundo do mar de `cores.ts`,
+   * desenhada pelo `<ObjetoMar>`. Variante própria (e não `objeto`) porque o
+   * id vem da FORMA, não da cor — a cor sai da bijeção do catálogo.
+   */
+  | { tipo: "carta"; forma: FormaObjeto; cor: string }
   /** Rosto da família — o `<Album>` procura a foto no IndexedDB. */
   | { tipo: "pessoa"; personagemId: string }
   /** Fallback: id desconhecido nunca vira tela quebrada. */
@@ -111,6 +141,22 @@ export function baralhar(texto: string): number {
 
 function corDaPeca(id: string): string | null {
   return CORES.find((c) => c.id === id)?.hex ?? null;
+}
+
+/**
+ * A peça do catálogo que tem esta forma. Existe pela bijeção cor <-> forma de
+ * `cores.ts` (validada no import de lá): dada a forma, a cor é única. É o que
+ * deixa o id da memória ser só a forma — sem repetir a cor no id, que
+ * poderia contradizer o catálogo numa versão futura.
+ */
+function pecaDaForma(forma: string): { hex: string; id: string; forma: FormaObjeto } | null {
+  const achada = CORES.find((c) => c.forma === forma);
+  return achada ? { hex: achada.hex, id: achada.id, forma: achada.forma } : null;
+}
+
+/** `letra-<A..Z>`: exatamente UMA letra maiúscula sem acento. Resto é lixo. */
+function letraValida(bruta: string): string | null {
+  return /^[A-Z]$/.test(bruta) ? bruta : null;
 }
 
 /** Cor do cardume de contagem — amarelo areia, igual ao token do design system. */
@@ -140,6 +186,18 @@ export function desenhoDaFigurinha(id: string): DesenhoFigurinha {
     if (ANIMAIS.some((a) => a.id === qual)) return { tipo: "bicho", qual: qual as IdAnimal };
   }
 
+  if (id.startsWith(PREFIXO.letras)) {
+    const letra = letraValida(id.slice(PREFIXO.letras.length));
+    if (letra) return { tipo: "letra", letra };
+  }
+
+  if (id.startsWith(PREFIXO.memoria)) {
+    const peca = pecaDaForma(id.slice(PREFIXO.memoria.length));
+    if (peca) return { tipo: "carta", forma: peca.forma, cor: peca.hex };
+    // Par de foto da família ou de mascote (ver memoria.ts): não tem desenho
+    // próprio no álbum, cai no mascote como qualquer id sem tradução.
+  }
+
   if (id.startsWith(PREFIXO.familia)) {
     const personagemId = id.slice(PREFIXO.familia.length);
     if (personagemId) return { tipo: "pessoa", personagemId };
@@ -161,6 +219,15 @@ export function nomeDaFigurinha(id: string, nomes?: ReadonlyMap<string, string>)
     case "cardume": {
       const f = FORMAS[d.forma];
       return d.quantidade === 1 ? `1 ${f.singular}` : `${d.quantidade} ${f.plural}`;
+    }
+    case "letra":
+      // "letra P" e não só "P": um leitor de tela lê a letra solta como
+      // palavra ("pê" vira "p"), e o adulto que abre o relatório precisa
+      // entender o item sem contexto.
+      return `letra ${d.letra}`;
+    case "carta": {
+      const peca = CORES.find((c) => c.forma === d.forma);
+      return peca ? nomeDaPeca(peca.id) : FORMAS[d.forma].singular;
     }
     case "bicho":
       return ANIMAIS.find((a) => a.id === d.qual)?.nome ?? d.qual;

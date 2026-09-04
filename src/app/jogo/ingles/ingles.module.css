@@ -109,19 +109,11 @@
   inline-size: clamp(28px, 7vmin, 60px);
 }
 
-/* `<Bicho>`/`<Saudacao>` (ao contrário de `<ObjetoMar>`/`.objeto`, que já
-   define `max-block-size: 100%` no próprio módulo) não anulam o
-   `.card-modo svg { max-block-size: 55% }` global (globals.css). Dentro de
-   um wrapper flex/grid sem altura própria definida, esse teto de 55%
-   resolve contra uma altura de referência pequena e ESMAGA o desenho (medido
-   no navegador com `getBoundingClientRect`: 60x33 em vez de 60x60 — 33 é
-   exatamente 55% de 60). `ingles.module.css` nunca entra em @layer, então
-   `max-block-size: none` aqui sempre vence a regra global, não importa a
-   especificidade; o quadrado então vem do `aspect-ratio: 1 / 1`. */
-.iconeQuadrado {
-  aspect-ratio: 1 / 1;
-  max-block-size: none;
-}
+/* `.iconeQuadrado` MUDOU DE CASA: virou `CLASSE_ICONE_QUADRADO` em
+   `@/components/TelaEscolha` (TelaEscolha.module.css) quando a tela de
+   escolha foi extraída. Não é enfeite deste modo — é a armadilha do
+   `.card-modo svg { max-block-size: 55% }` global, que vale para qualquer
+   tela de escolha; o porquê e a medida estão documentados lá. */
 
 /* "Palavras": um bicho + um objeto lado a lado — a mesma dupla que o
    baralho `cotidiano` sorteia de fato (animal OU forma, nunca os dois numa

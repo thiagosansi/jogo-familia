@@ -201,6 +201,22 @@ function Traco({
         </span>
       );
 
+    case "letra":
+      // O GLIFO é o desenho (ver `DesenhoFigurinha` em recompensa.ts): a
+      // letra não tem silhueta que a substitua. `aria-hidden` porque o
+      // rótulo acessível ("letra P") já está no `<span>` de fora — senão o
+      // leitor de tela anunciaria a letra duas vezes, e a segunda como
+      // palavra solta.
+      return (
+        <span className={estilos.letra} aria-hidden="true">
+          {desenho.letra}
+        </span>
+      );
+
+    case "carta":
+      // Mesma peça do fundo do mar de "cores" — nenhuma arte nova.
+      return <ObjetoMar forma={desenho.forma} cor={desenho.cor} />;
+
     case "bicho":
       return <Bicho qual={desenho.qual} />;
 

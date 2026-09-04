@@ -42,6 +42,15 @@ test("traduz cada eixo no desenho certo", () => {
     tipo: "pessoa",
     personagemId: "abc123",
   });
+  // O glifo É o desenho da figurinha de letra (ver DesenhoFigurinha).
+  assert.deepEqual(desenhoDaFigurinha("letra-P"), { tipo: "letra", letra: "P" });
+  // A cor da carta sai da bijeção cor <-> forma de `cores.ts` — o id só
+  // carrega a forma, então o catálogo continua sendo a única fonte da cor.
+  assert.deepEqual(desenhoDaFigurinha("memoria-peixe"), {
+    tipo: "carta",
+    forma: "peixe",
+    cor: "#ffd166",
+  });
 });
 
 test("id desconhecido vira mascote em vez de estourar", () => {
@@ -55,6 +64,16 @@ test("id desconhecido vira mascote em vez de estourar", () => {
     // O eixo "ingles" existe (ver eixoDaFigurinha), mas o catálogo de
     // desenhos por palavra ainda não foi escrito — cai no mascote até lá.
     "ingles-hello",
+    // Letra só vale com UM caractere maiúsculo de A a Z.
+    "letra-",
+    "letra-ab",
+    "letra-p",
+    "letra-Ç",
+    "letra-1",
+    // Par de memória que não é forma do catálogo (foto da família, mascote):
+    // sem desenho próprio no álbum, cai no mascote.
+    "memoria-",
+    "memoria-dinossauro",
   ]) {
     const d = desenhoDaFigurinha(id);
     assert.equal(d.tipo, "mascote", `id ${JSON.stringify(id)} deveria cair no mascote`);
@@ -67,10 +86,17 @@ test("idFigurinha e eixoDaFigurinha são o caminho de ida e volta", () => {
   assert.equal(idFigurinha("cores", "azul"), "cor-azul");
   assert.equal(idFigurinha("contar", 4), "contar-4");
   assert.equal(idFigurinha("ingles", "hello"), "ingles-hello");
+  assert.equal(idFigurinha("letras", "P"), "letra-P");
+  assert.equal(idFigurinha("memoria", "peixe"), "memoria-peixe");
   assert.equal(eixoDaFigurinha("cor-azul"), "cores");
   assert.equal(eixoDaFigurinha("animal-gato"), "animais");
   assert.equal(eixoDaFigurinha("familia-x"), "familia");
   assert.equal(eixoDaFigurinha("ingles-hello"), "ingles");
+  assert.equal(eixoDaFigurinha("letra-P"), "letras");
+  assert.equal(eixoDaFigurinha("memoria-peixe"), "memoria");
+  // Id de letra inválido continua sendo do eixo "letras" (o prefixo é o que
+  // manda), mesmo caindo no mascote na hora de desenhar.
+  assert.equal(eixoDaFigurinha("letra-ab"), "letras");
   assert.equal(eixoDaFigurinha("lixo"), null);
 });
 
@@ -80,6 +106,9 @@ test("nome sai em português e sem id cru na tela", () => {
   assert.equal(nomeDaFigurinha("contar-1"), "1 peixinho");
   assert.equal(nomeDaFigurinha("familia-p1"), "alguém da família");
   assert.equal(nomeDaFigurinha("familia-p1", new Map([["p1", "Mamãe"]])), "Mamãe");
+  assert.equal(nomeDaFigurinha("letra-P"), "letra P");
+  assert.equal(nomeDaFigurinha("memoria-peixe"), "peixinho amarelo");
+  assert.equal(nomeDaFigurinha("memoria-concha"), "concha azul");
 });
 
 test("ordena pela conquista e desempata pelo id (nunca pela ordem do banco)", () => {

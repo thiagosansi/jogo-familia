@@ -15,10 +15,11 @@
  * jogo. Por isso `/jogo/ingles` abre em `<TelaEscolhaExercicio>`: seis
  * cartões grandes (Tudo misturado, Números, Palavras, Família, Saudações,
  * Cores), cada um reconhecível pelo DESENHO (a criança ainda não lê — isso
- * continua valendo), no mesmo padrão visual da home (`.tela`/`.grade-modos`/
- * `.card-modo` de `globals.css`). A última escolha fica salva no aparelho
- * (`localStorage`, ver `lerEscolhaSalva`/`salvarEscolha`) para não obrigar a
- * escolher de novo a cada abertura, e o botão "Trocar" (canto inferior
+ * continua valendo), no mesmo padrão visual da home — o layout mora no
+ * `<TelaEscolha>` compartilhado (`@/components/TelaEscolha`), esta página só
+ * diz quais opções existem. A última escolha fica salva no aparelho
+ * (`localStorage`, ver `useEscolhaLembrada` + `CHAVE_ESCOLHA_INGLES`) para
+ * não obrigar a escolher de novo a cada abertura, e o botão "Trocar" (inferior
  * direito da rodada) sempre permite voltar à escolha sem sair do jogo. NÃO
  * REVERTER isto para "sorteia sozinho, sem tela" de novo.
  *
@@ -73,12 +74,18 @@
  * anos não decodifica.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bicho } from "@/components/bichos/Bicho";
 import { Despedida } from "@/components/Despedida";
 import { BotaoAlternativa, Palco } from "@/components/Palco";
+import {
+  CLASSE_ICONE_QUADRADO,
+  TelaEscolha,
+  type OpcaoEscolha,
+} from "@/components/TelaEscolha";
 import { BotaoVoltar } from "@/components/objetos/BotaoVoltar";
 import { ObjetoMar } from "@/components/objetos/ObjetoMar";
+import { useEscolhaLembrada } from "@/components/objetos/useEscolhaLembrada";
 import { useSemente } from "@/components/objetos/useSemente";
 import estilosObjetos from "@/components/objetos/objetos.module.css";
 import { Personagem } from "@/components/Personagem";
@@ -332,71 +339,27 @@ function escolherVozFesta(passo: Passo, elenco: readonly Pessoa[]): Blob | null 
 
 // ------------------------------------------------------- escolha lembrada
 
-/** Chave no `localStorage` — "lembrar a última escolha" pedido no brief. */
+/**
+ * Chave no `localStorage` — "lembrar a última escolha" pedido no brief. NÃO
+ * MUDAR: quem já jogou tem a escolha salva sob esta chave, e trocá-la faria
+ * o jogo "esquecer" o baralho de todo mundo.
+ */
 const CHAVE_ESCOLHA_INGLES = "jogo-familia:ingles:escolha";
 
-const ESCOLHAS_VALIDAS: ReadonlySet<string> = new Set<EscolhaIngles>([
+/**
+ * Os ids aceitos HOJE. Um valor salvo por uma versão anterior que não esteja
+ * aqui é tratado como "nunca escolheu" (ver `useEscolhaLembrada`), então a
+ * tela de escolha aparece em vez de o jogo tentar montar um baralho morto.
+ * Constante de MÓDULO de propósito: identidade estável entre renders.
+ */
+const ESCOLHAS_VALIDAS: readonly EscolhaIngles[] = [
   "misturado",
   "numeros",
   "cotidiano",
   "familia",
   "saudacoes",
   "cores",
-]);
-
-/**
- * Lê a última escolha salva neste aparelho. `null` = nunca escolheu, o
- * valor salvo não é mais um baralho válido, ou o `localStorage` está
- * bloqueado (aba anônima, quota cheia) — falha aberta: sem valor salvo, a
- * tela de escolha aparece, nunca quebra o jogo.
- */
-function lerEscolhaSalva(): EscolhaIngles | null {
-  try {
-    const bruta = localStorage.getItem(CHAVE_ESCOLHA_INGLES);
-    return bruta !== null && ESCOLHAS_VALIDAS.has(bruta) ? (bruta as EscolhaIngles) : null;
-  } catch {
-    return null;
-  }
-}
-
-function salvarEscolha(escolha: EscolhaIngles): void {
-  try {
-    localStorage.setItem(CHAVE_ESCOLHA_INGLES, escolha);
-  } catch {
-    /* Sem storage a escolha desta sessão ainda funciona — só não fica lembrada. */
-  }
-}
-
-/** Sempre `null` no servidor (não existe `localStorage`) — igual a nunca ter
- * escolhido, então o HTML do servidor é sempre a tela de escolha. */
-function lerEscolhaSalvaServidor(): EscolhaIngles | null {
-  return null;
-}
-
-/** Nada muda depois do primeiro snapshot — a assinatura é um no-op (mesmo
- * padrão de `useSemente`). */
-function assinarEscolhaSalva(): () => void {
-  return () => {};
-}
-
-/**
- * A última escolha lembrada, com hidratação segura.
- *
- * Por que `useSyncExternalStore` (mesmo padrão de `useSemente`, ver o
- * porquê lá) e NÃO um `useState(() => lerEscolhaSalva())` direto: esta
- * chamada roda durante a PRÓPRIA hidratação de `JogoIngles` (a troca de
- * semente que remonta o componente só acontece DEPOIS), então um
- * `localStorage.getItem` lido direto no inicializador do `useState`
- * divergiria do HTML do servidor (que nunca tem `localStorage`) sempre que
- * já existisse uma escolha salva — hydration mismatch de verdade (confirmado
- * no overlay de erro do Next.js ao testar com uma escolha lembrada).
- * `useSyncExternalStore` usa `getServerSnapshot` (`null`) durante a
- * hidratação — igual ao servidor, sem mismatch — e troca para o valor real
- * do cliente logo depois, automaticamente.
- */
-function useEscolhaLembrada(): EscolhaIngles | null {
-  return useSyncExternalStore(assinarEscolhaSalva, lerEscolhaSalva, lerEscolhaSalvaServidor);
-}
+];
 
 // -------------------------------------------------------------------- jogo
 
@@ -440,7 +403,7 @@ function JogoIngles({ semente }: { semente: number }) {
   // sessão: `undefined` = segue a lembrada; `null` = "Trocar" pediu a tela de
   // escolha AGORA (sem apagar o que está salvo no aparelho); um baralho = a
   // criança acabou de escolher. `null` = mostrar a tela de escolha.
-  const lembrada = useEscolhaLembrada();
+  const [lembrada, lembrar] = useEscolhaLembrada(CHAVE_ESCOLHA_INGLES, ESCOLHAS_VALIDAS);
   const [sobreposta, setSobreposta] = useState<EscolhaIngles | null | undefined>(undefined);
   const escolha = sobreposta !== undefined ? sobreposta : lembrada;
 
@@ -450,7 +413,7 @@ function JogoIngles({ semente }: { semente: number }) {
         <TelaEscolhaExercicio
           elenco={elenco}
           aoEscolher={(nova) => {
-            salvarEscolha(nova);
+            lembrar(nova);
             setSobreposta(nova);
           }}
         />
@@ -788,12 +751,7 @@ function Rodada({
 
 // -------------------------------------------------------- tela de escolha
 
-interface OpcaoEscolha {
-  readonly id: EscolhaIngles;
-  readonly rotulo: string;
-  readonly cor: string;
-  readonly icone: React.ReactNode;
-}
+type OpcaoIngles = OpcaoEscolha<EscolhaIngles>;
 
 /** Tamanho comum dos desenhos das opções — absoluto (não `%`), porque
  * `<Personagem>`/`<Bicho>`/`<Saudacao>` aplicam `tamanho` como estilo
@@ -804,7 +762,7 @@ interface OpcaoEscolha {
 const TAMANHO_ICONE_ESCOLHA = "clamp(90px, 18vmin, 190px)";
 const TAMANHO_ICONE_COMPOSTO = "clamp(28px, 7vmin, 60px)";
 
-const OPCAO_MISTURADO: OpcaoEscolha = {
+const OPCAO_MISTURADO: OpcaoIngles = {
   id: "misturado",
   rotulo: "Tudo misturado",
   // Mesma cor do cartão "Inglês" na home — esta tela é a continuação dele.
@@ -815,14 +773,14 @@ const OPCAO_MISTURADO: OpcaoEscolha = {
     // dentro da própria rodada.
     <span className={estilos.iconeMisturado} aria-hidden="true">
       <ObjetoMar forma="peixe" cor="var(--color-agua)" className={estilos.pontoMisturado} />
-      <Bicho qual="gato" tamanho={TAMANHO_ICONE_COMPOSTO} className={estilos.iconeQuadrado} />
-      <Saudacao qual="hello" tamanho={TAMANHO_ICONE_COMPOSTO} className={estilos.iconeQuadrado} />
+      <Bicho qual="gato" tamanho={TAMANHO_ICONE_COMPOSTO} className={CLASSE_ICONE_QUADRADO} />
+      <Saudacao qual="hello" tamanho={TAMANHO_ICONE_COMPOSTO} className={CLASSE_ICONE_QUADRADO} />
       <ObjetoMar forma="estrela" cor="var(--color-areia)" className={estilos.pontoMisturado} />
     </span>
   ),
 };
 
-const OPCAO_NUMEROS: OpcaoEscolha = {
+const OPCAO_NUMEROS: OpcaoIngles = {
   id: "numeros",
   rotulo: "Números",
   cor: "var(--color-agua)",
@@ -845,7 +803,7 @@ const OPCAO_NUMEROS: OpcaoEscolha = {
   ),
 };
 
-const OPCAO_PALAVRAS: OpcaoEscolha = {
+const OPCAO_PALAVRAS: OpcaoIngles = {
   id: "cotidiano",
   rotulo: "Palavras",
   cor: "var(--color-alga)",
@@ -853,20 +811,20 @@ const OPCAO_PALAVRAS: OpcaoEscolha = {
     // O baralho `cotidiano` sorteia OU um bicho OU uma forma (ver
     // `ConteudoAlternativa`) — o cartão mostra os dois juntos.
     <span className={estilos.iconeDupla} aria-hidden="true">
-      <Bicho qual="cachorro" tamanho={TAMANHO_ICONE_COMPOSTO} className={estilos.iconeQuadrado} />
+      <Bicho qual="cachorro" tamanho={TAMANHO_ICONE_COMPOSTO} className={CLASSE_ICONE_QUADRADO} />
       <ObjetoMar forma="concha" cor="var(--color-areia)" className={estilos.pontoIcone} />
     </span>
   ),
 };
 
-const OPCAO_SAUDACOES: OpcaoEscolha = {
+const OPCAO_SAUDACOES: OpcaoIngles = {
   id: "saudacoes",
   rotulo: "Saudações",
   cor: "var(--color-areia)",
-  icone: <Saudacao qual="hello" tamanho={TAMANHO_ICONE_ESCOLHA} className={estilos.iconeQuadrado} />,
+  icone: <Saudacao qual="hello" tamanho={TAMANHO_ICONE_ESCOLHA} className={CLASSE_ICONE_QUADRADO} />,
 };
 
-const OPCAO_CORES: OpcaoEscolha = {
+const OPCAO_CORES: OpcaoIngles = {
   id: "cores",
   rotulo: "Cores",
   cor: "var(--color-mar-500)",
@@ -883,7 +841,7 @@ const OPCAO_CORES: OpcaoEscolha = {
 };
 
 /** Só chamada quando `podeFamilia` é `true` — sempre acha um representante. */
-function opcaoFamilia(representante: Pessoa): OpcaoEscolha {
+function opcaoFamilia(representante: Pessoa): OpcaoIngles {
   return {
     id: "familia",
     rotulo: "Família",
@@ -900,15 +858,15 @@ function opcaoFamilia(representante: Pessoa): OpcaoEscolha {
 }
 
 /**
- * A tela de entrada de `/jogo/ingles`: cinco cartões grandes, mesmo padrão
- * visual da home (`.tela`/`.grade-modos`/`.card-modo` de `globals.css`) — a
- * criança reconhece pelo DESENHO, o texto é reforço para o adulto.
+ * A tela de entrada de `/jogo/ingles`: quais opções entram e com que desenho.
+ * O layout (cartões grandes no padrão visual da home) é do `<TelaEscolha>`
+ * compartilhado — ver o cabeçalho dele para as decisões de UX.
  *
  * "Família" só entra na lista quando o elenco dá para jogar (edge case
  * obrigatório do brief): sem isso a criança escolheria um cartão que não
  * gera rodada nenhuma. Enquanto o cadastro ainda carrega (`elenco === null`,
- * poucos milissegundos), a tela fica só com o fundo — mesmo padrão de
- * `useIdsAtivos` na home — para o cartão não "pipocar" um instante depois.
+ * poucos milissegundos), a tela fica só com o fundo (`carregando`) — mesmo
+ * padrão de `useIdsAtivos` na home — para o cartão não "pipocar" depois.
  */
 function TelaEscolhaExercicio({
   elenco,
@@ -917,19 +875,13 @@ function TelaEscolhaExercicio({
   elenco: readonly Pessoa[] | null;
   aoEscolher: (escolha: EscolhaIngles) => void;
 }) {
-  if (elenco === null) {
-    return (
-      <main className="tela" aria-busy="true">
-        <h1 className="so-leitor">Inglês — escolha a brincadeira</h1>
-        <BotaoVoltar />
-      </main>
-    );
-  }
+  const jogaveis = elenco === null ? [] : palavrasFamiliaJogaveis(elenco);
+  const representante =
+    elenco !== null && jogaveis.length > 0
+      ? (elenco.find((p) => jogaveis.some((j) => j.papel === p.papel)) ?? null)
+      : null;
 
-  const jogaveis = palavrasFamiliaJogaveis(elenco);
-  const representante = jogaveis.length > 0 ? (elenco.find((p) => jogaveis.some((j) => j.papel === p.papel)) ?? null) : null;
-
-  const opcoes: OpcaoEscolha[] = [
+  const opcoes: OpcaoIngles[] = [
     OPCAO_MISTURADO,
     OPCAO_NUMEROS,
     OPCAO_PALAVRAS,
@@ -939,28 +891,13 @@ function TelaEscolhaExercicio({
   ];
 
   return (
-    <main className="tela">
-      <h1 className="so-leitor">Inglês — escolha a brincadeira</h1>
-      <ul className="grade-modos">
-        {opcoes.map((op) => (
-          <li key={op.id}>
-            <button
-              type="button"
-              className="card-modo"
-              style={{ "--cor": op.cor } as React.CSSProperties}
-              aria-label={op.rotulo}
-              onClick={() => aoEscolher(op.id)}
-              data-teste={`ingles-escolher-${op.id}`}
-            >
-              {op.icone}
-              {/* Reforço para o adulto — a criança navega pelo desenho. */}
-              <span aria-hidden="true">{op.rotulo}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <BotaoVoltar />
-    </main>
+    <TelaEscolha
+      titulo="Inglês — escolha a brincadeira"
+      opcoes={opcoes}
+      aoEscolher={aoEscolher}
+      carregando={elenco === null}
+      prefixoTeste="ingles-escolher-"
+    />
   );
 }
 

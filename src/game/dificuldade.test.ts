@@ -8,7 +8,9 @@ import test from "node:test";
 
 import {
   ACERTOS_PARA_SUBIR,
+  MAX_ALTERNATIVAS,
   QUASES_PARA_DESCER,
+  TETO_ABSOLUTO,
   dificuldadeInicial,
   embaralhar,
   hidratarDificuldade,
@@ -133,6 +135,64 @@ test("serializar/hidratar sobrevive a lixo salvo em disco", () => {
   assert.equal(hidratarDificuldade({ alternativas: 99 }).alternativas, 4, "teto respeitado");
   assert.equal(hidratarDificuldade({ alternativas: -3 }).alternativas, 2, "piso respeitado");
   assert.equal(hidratarDificuldade({ acertosSeguidos: 999 }).acertosSeguidos, ACERTOS_PARA_SUBIR);
+});
+
+// ------------------------------------------------- teto por mini-jogo (maximo)
+
+test("maximo padrão continua 4", () => {
+  assert.equal(MAX_ALTERNATIVAS, 4);
+  assert.equal(dificuldadeInicial().maximo, 4, "quem não pede teto joga com 4");
+  assert.equal(dificuldadeInicial(2).maximo, 4, "só a quantidade inicial não muda o teto");
+  // Um estado sem `maximo` salvo (versão anterior ao teto por mini-jogo)
+  // hidrata com o teto único daquela época — nunca com 6.
+  assert.equal(
+    hidratarDificuldade({ alternativas: 3, acertosSeguidos: 0, quasesSeguidos: 0 }).maximo,
+    4,
+  );
+});
+
+test("com maximo 6 sobe até 6 e nunca além", () => {
+  let d = dificuldadeInicial(2, 6);
+  assert.equal(d.alternativas, 2);
+  assert.equal(d.maximo, 6);
+
+  // 3 acertos por degrau: 2 -> 3 -> 4 -> 5 -> 6 são 4 degraus = 12 acertos.
+  for (const esperado of [3, 4, 5, 6]) {
+    for (let i = 0; i < ACERTOS_PARA_SUBIR; i++) d = registrarAcerto(d);
+    assert.equal(d.alternativas, esperado, `deveria estar em ${esperado} alternativas`);
+    assert.equal(d.maximo, 6, "o teto do mini-jogo viaja com o estado");
+  }
+
+  // Teto: martelar acerto no 6 não cria um nível 7 (nem estoura o tipo).
+  for (let i = 0; i < 20; i++) d = registrarAcerto(d);
+  assert.equal(d.alternativas, 6);
+  assert.equal(d.alternativas, TETO_ABSOLUTO, "6 é o teto absoluto do tipo");
+
+  // Descer continua igual (o piso é 2, não depende do teto).
+  d = registrarQuaseLa(registrarQuaseLa(d));
+  assert.equal(d.alternativas, 5);
+  assert.equal(d.maximo, 6, "descer não rebaixa o teto do mini-jogo");
+});
+
+test("hidratar preserva maximo e limita alternativas ao maximo", () => {
+  // Ida e volta pelo disco de um estado com teto 6: nada se perde.
+  const d = registrarAcerto(registrarAcerto(dificuldadeInicial(5, 6)));
+  const salvo = JSON.parse(JSON.stringify(serializarDificuldade(d)));
+  assert.deepEqual(hidratarDificuldade(salvo), d);
+
+  // Teto absoluto: lixo no disco nunca vira 99 bolhas na tela.
+  assert.equal(hidratarDificuldade({ alternativas: 99, maximo: 99 }).alternativas, TETO_ABSOLUTO);
+  assert.equal(hidratarDificuldade({ alternativas: 99, maximo: 99 }).maximo, TETO_ABSOLUTO);
+
+  // O `maximo` salvo manda nas alternativas salvas: um estado de teto 6 que
+  // volta num modo de teto 4 não reabre com 6 bolhas.
+  const rebaixado = hidratarDificuldade({ alternativas: 6, maximo: 4 });
+  assert.equal(rebaixado.alternativas, 4);
+  assert.equal(rebaixado.maximo, 4);
+
+  // Piso do teto: `maximo` menor que o mínimo jogável vira o mínimo.
+  assert.equal(hidratarDificuldade({ alternativas: 4, maximo: 1 }).maximo, 2);
+  assert.equal(hidratarDificuldade({ alternativas: 4, maximo: 1 }).alternativas, 2);
 });
 
 /** Gerador determinístico (cíclico) para os testes de sorteio. */

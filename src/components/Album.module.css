@@ -85,6 +85,28 @@
   block-size: 100%;
 }
 
+/* Letra do modo letras: o GLIFO é o desenho, então ele ocupa a bolha inteira
+   como um bichinho ocuparia. Puramente visual — o rótulo acessível vem do
+   `aria-label` do `<span>` de fora (ver Album.tsx). `1cqi`/`cqi` seria mais
+   direto, mas exigiria container-type na bolha; `100%` de bloco + um
+   `font-size` em `em` do container resolve igual e sem regra nova. */
+.letra {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 100%;
+  /* A bolha varia de ~46px a ~84px (ver `--tam`): a letra acompanha por
+     `vmin`, com piso legível de relance e teto que não estoura a moldura. */
+  font-size: clamp(22px, 5.4vmin, 52px);
+  font-weight: 800;
+  line-height: 1;
+  /* Nunca minúscula, mesmo se o id vier de uma versão futura em caixa baixa. */
+  text-transform: uppercase;
+  color: var(--color-mar-900, #06304f);
+  /* Não deixa o dedo/cursor selecionar o texto ao arrastar no aquário. */
+  user-select: none;
+}
+
 /* Cardume do modo contar: a QUANTIDADE é o desenho (nunca o numeral). */
 .cardume {
   display: flex;

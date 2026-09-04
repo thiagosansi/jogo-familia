@@ -15,6 +15,7 @@ import {
   addFigurinha,
   CONFIG_ID,
   CONFIG_PADRAO,
+  EIXOS,
   filtrarPorIdsAtivos,
   getConfig,
   getDB,
@@ -122,6 +123,11 @@ test("progresso salvo antes do eixo 'ingles' existir lê com o eixo zerado", asy
 
   const p = await getProgresso();
   assert.deepEqual(p.porEixo.ingles, { acertos: 0, erros: 0 });
+  // Mesma garantia para os eixos que nasceram depois de "ingles": nenhum
+  // eixo de `EIXOS` pode faltar num progresso lido do disco.
+  assert.deepEqual(p.porEixo.letras, { acertos: 0, erros: 0 });
+  assert.deepEqual(p.porEixo.memoria, { acertos: 0, erros: 0 });
+  for (const eixo of EIXOS) assert.ok(p.porEixo[eixo], `eixo ${eixo} faltando em porEixo`);
   // O resto do progresso antigo não deve ter sido perdido na mescla.
   assert.deepEqual(p.porEixo.familia, { acertos: 1, erros: 0 });
   assert.equal(p.figurinhas.length, 1);
@@ -132,6 +138,8 @@ test("progresso salvo antes do eixo 'ingles' existir lê com o eixo zerado", asy
   _resetDB();
   const p2 = await getProgresso();
   assert.deepEqual(p2.porEixo.ingles, { acertos: 0, erros: 0 });
+  assert.deepEqual(p2.porEixo.letras, { acertos: 0, erros: 0 });
+  assert.deepEqual(p2.porEixo.memoria, { acertos: 0, erros: 0 });
 });
 
 // -------------------------------------------------- reconciliarModosAtivos
@@ -197,9 +205,17 @@ test("getConfig: subconjunto salvo de ids da base antiga é respeitado de ponta 
 
   const config = await getConfig();
   // "contar", "animais" e "aquario" são da base antiga e foram deixados de
-  // fora do salvo: continuam de fora. "ingles" não é da base antiga —
-  // aparece mesmo ausente do salvo (é o caso do teste seguinte).
-  assert.deepEqual(config.modosAtivos, ["familia", "cores", "ingles"]);
+  // fora do salvo: continuam de fora. "ingles", "letras", "numeros" e
+  // "memoria" NÃO são da base antiga — aparecem mesmo ausentes do salvo (é o
+  // caso do teste seguinte).
+  assert.deepEqual(config.modosAtivos, [
+    "familia",
+    "cores",
+    "ingles",
+    "letras",
+    "numeros",
+    "memoria",
+  ]);
 });
 
 test("getConfig: aparelho com config salva ANTES de 'ingles' existir mostra ingles ativo", async () => {
@@ -217,6 +233,12 @@ test("getConfig: aparelho com config salva ANTES de 'ingles' existir mostra ingl
 
   const config = await getConfig();
   assert.ok(config.modosAtivos.includes("ingles"), "ingles não pode ficar escondido");
+  // A mesma regra vale para todo modo que nasceu depois de `MODOS_PADRAO_BASE`
+  // ser congelado — os dos 5 anos inclusive. Nenhuma tela jamais deu ao adulto
+  // a chance de desligá-los, então ausência no salvo nunca é escolha dele.
+  for (const novo of ["letras", "numeros", "memoria"]) {
+    assert.ok(config.modosAtivos.includes(novo), `${novo} não pode ficar escondido`);
+  }
   // Nenhum dos 5 antigos foi excluído de propósito: todos continuam ativos,
   // e o resultado bate com o padrão inteiro de hoje.
   assert.deepEqual(config.modosAtivos, CONFIG_PADRAO.modosAtivos);

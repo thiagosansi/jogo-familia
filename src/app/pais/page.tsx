@@ -6,7 +6,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CropperCircular } from "@/components/CropperCircular";
 import { GravadorVoz } from "@/components/GravadorVoz";
 import { DURACAO_CONFIRMA_MS, PortaoPais, useSegurar } from "@/components/PortaoPais";
-import { PAPEIS, listarPersonagens, removerPersonagem, salvarPersonagem } from "@/lib/db";
+import {
+  PAPEIS,
+  getConfig,
+  listarPersonagens,
+  removerPersonagem,
+  salvarPersonagem,
+  setConfig,
+} from "@/lib/db";
 import {
   type ItemImportacao,
   type Plano,
@@ -244,6 +251,9 @@ function Painel() {
           {recado}
         </p>
       )}
+
+      {/* ------------------------------------------------------------ criança */}
+      <CampoNomeCrianca />
 
       {/* -------------------------------------------------------- personagens */}
       <section className={estilos.secao}>
@@ -594,6 +604,80 @@ function Painel() {
         </div>
       </section>
     </main>
+  );
+}
+
+// ------------------------------------------------------------------ criança
+
+/**
+ * "Nome da criança" — o único campo de `Config` editável nesta tela.
+ *
+ * POR QUE EXISTE: o modo "Letras" ancora cada letra numa palavra que a
+ * criança reconhece, e a palavra que ela reconhece melhor é o nome dela —
+ * "B de Bia". Sem isso a âncora cairia sempre em nome de familiar ou de
+ * figura, que ensina igual mas emociona menos.
+ *
+ * SEMPRE OPCIONAL: em branco grava `undefined` (nunca string vazia, para
+ * "sem nome" ter uma representação só), e todo modo continua jogável sem
+ * ele — nenhuma tela pode exigir cadastro para funcionar.
+ *
+ * GRAVA AO SAIR DO CAMPO (`onBlur`), não a cada tecla: escrever no
+ * IndexedDB a cada letra digitada é uma escrita por caractere sem nenhum
+ * ganho — ninguém está esperando o valor do outro lado.
+ */
+function CampoNomeCrianca() {
+  // `null` = ainda lendo a config. O input só aparece com valor de verdade,
+  // para não piscar de vazio para preenchido enquanto o adulto olha.
+  const [nome, setNome] = useState<string | null>(null);
+  const [salvo, setSalvo] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    void getConfig()
+      .then((c) => {
+        if (vivo) setNome(c.nomeCrianca ?? "");
+      })
+      // Config ilegível (aba anônima, quota): o campo abre vazio e continua
+      // usável — falha aberta, como o resto do app.
+      .catch(() => {
+        if (vivo) setNome("");
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const gravar = useCallback(async (valor: string) => {
+    const limpo = valor.trim();
+    await setConfig({ nomeCrianca: limpo === "" ? undefined : limpo });
+    setSalvo(true);
+  }, []);
+
+  return (
+    <section className={estilos.secao} data-teste="secao-crianca">
+      <h2 className={estilos.subtitulo}>A criança</h2>
+      <label className={estilos.campo}>
+        <span>Nome da criança</span>
+        <input
+          type="text"
+          value={nome ?? ""}
+          data-teste="input-nome-crianca"
+          placeholder="Bia"
+          autoComplete="off"
+          disabled={nome === null}
+          onChange={(e) => {
+            setSalvo(false);
+            setNome(e.target.value);
+          }}
+          onBlur={(e) => void gravar(e.target.value)}
+        />
+      </label>
+      <p className={estilos.ajuda}>
+        Usado no jogo das letras (&ldquo;B de Bia&rdquo;). Pode deixar em
+        branco — nenhum jogo precisa dele. Fica só neste aparelho.
+        {salvo ? " Salvo." : ""}
+      </p>
+    </section>
   );
 }
 

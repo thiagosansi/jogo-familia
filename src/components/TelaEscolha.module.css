@@ -1,0 +1,15 @@
+/* Estilos próprios de `<TelaEscolha>`.
+
+   O VISUAL DA TELA NÃO MORA AQUI, de propósito: os cartões usam as classes
+   GLOBAIS `.tela` / `.grade-modos` / `.card-modo` de `globals.css` — as
+   mesmas da home — para escolher uma brincadeira ser o mesmo gesto que
+   escolher um jogo. Copiar aquelas regras para cá criaria uma segunda
+   linguagem visual que sairia do lugar na primeira mudança da home. Este
+   módulo carrega só o que `globals.css` não cobre. */
+
+/* Escapa do `.card-modo svg { max-block-size: 55% }` global — ver o comentário
+   de `CLASSE_ICONE_QUADRADO` em TelaEscolha.tsx para o porquê e a medida. */
+.iconeQuadrado {
+  aspect-ratio: 1 / 1;
+  max-block-size: none;
+}

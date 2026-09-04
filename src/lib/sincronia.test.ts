@@ -92,6 +92,8 @@ test("mesclar não duplica figurinha e não desloca as antigas", () => {
       contar: { acertos: 0, erros: 0 },
       animais: { acertos: 0, erros: 0 },
       ingles: { acertos: 0, erros: 0 },
+      letras: { acertos: 0, erros: 0 },
+      memoria: { acertos: 0, erros: 0 },
     },
     atualizadoEm: 300,
   };
@@ -129,6 +131,8 @@ test("mesclar duas vezes dá o mesmo resultado (idempotente)", () => {
       contar: { acertos: 1, erros: 0 },
       animais: { acertos: 0, erros: 0 },
       ingles: { acertos: 0, erros: 0 },
+      letras: { acertos: 0, erros: 0 },
+      memoria: { acertos: 0, erros: 0 },
     },
     atualizadoEm: 10,
   };

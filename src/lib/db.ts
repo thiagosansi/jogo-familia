@@ -26,7 +26,15 @@ import type {
 export const PAPEIS: readonly Papel[] = ["mae", "pai", "irmao", "parente", "mascote"];
 
 /** Eixos de aprendizado — cada modo de jogo alimenta um deles. */
-export const EIXOS: readonly Eixo[] = ["familia", "cores", "contar", "animais", "ingles"];
+export const EIXOS: readonly Eixo[] = [
+  "familia",
+  "cores",
+  "contar",
+  "animais",
+  "ingles",
+  "letras",
+  "memoria",
+];
 
 export const DB_NOME = "jogo-familia";
 export const DB_VERSAO = 1;
@@ -45,7 +53,17 @@ export const CONFIG_ID = "unico";
 export const CONFIG_PADRAO: Config = {
   id: CONFIG_ID,
   limiteSessaoMin: 0,
-  modosAtivos: ["familia", "cores", "contar", "animais", "aquario", "ingles"],
+  modosAtivos: [
+    "familia",
+    "cores",
+    "contar",
+    "animais",
+    "aquario",
+    "ingles",
+    "letras",
+    "numeros",
+    "memoria",
+  ],
 };
 
 /**

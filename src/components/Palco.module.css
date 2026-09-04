@@ -65,6 +65,25 @@
   }
 }
 
+/* Cena da rodada (slot opcional `cena`, ver Palco.tsx): o que a pergunta
+   fala — o cardume a contar, o glifo da letra. Fica ENTRE o cabeçalho e a
+   grade e só existe no DOM quando o modo passa alguma coisa, então nenhum
+   modo antigo muda de layout.
+
+   `flex: 0 1 auto` de propósito: a cena cede altura antes da grade quando a
+   tela aperta (landscape baixo), porque perder alvo de toque é pior do que
+   perder desenho. `pointer-events: none` porque a rodada se resolve na
+   grade — um toque na cena não pode parecer uma resposta. */
+.cena {
+  flex: 0 1 auto;
+  min-block-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1.6vmin, 16px);
+  pointer-events: none;
+}
+
 /* Grade de alternativas: 2 colunas em portrait, mais em landscape — o auto-fit
    resolve os dois casos. Alvos nunca menores que --toque-min. */
 .grade {

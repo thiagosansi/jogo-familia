@@ -28,6 +28,20 @@
  *
  * Portrait e landscape saem do mesmo markup (grade auto-fit). Todo alvo
  * respeita `--toque-min` (88px).
+ *
+ * SLOT `cena` (opcional) — entre a pergunta e a grade
+ * ---------------------------------------------------
+ * Alguns modos precisam mostrar ALGO sobre o que a pergunta fala, e não só
+ * as alternativas: o cardume que a criança tem que contar ("Quantos
+ * peixinhos tem?") ou o glifo da letra ("Qual começa com a letra P?"). Isso
+ * não cabe na `pergunta` — ela é o `<h1>`, texto falado pela `filaDeFala` —
+ * nem numa alternativa, que é alvo de toque.
+ *
+ *   <Palco pergunta="Quantos peixinhos tem?" cena={<Cardume n={4} />} …>
+ *
+ * A `cena` é DECORATIVA: nada dentro dela é tocável (a rodada se resolve na
+ * grade), e sem ela o layout é exatamente o de antes — a `<div>` só existe
+ * quando o modo passa alguma coisa.
  */
 
 import { useCallback, useRef, type ReactNode } from "react";
@@ -42,6 +56,12 @@ export interface PalcoProps {
   aoRepetir?: () => void;
   /** Está tocando áudio agora? Só anima o botão de repetir. */
   falando?: boolean;
+  /**
+   * Desenho da rodada, entre a pergunta e as alternativas (cardume a contar,
+   * glifo da letra…). Decorativo: não recebe toque. Omitido = layout de
+   * antes, sem nenhum elemento a mais.
+   */
+  cena?: ReactNode;
   /** Alternativas (use <BotaoAlternativa>). */
   children: ReactNode;
   /** Área de feedback: careta, comemoração, figurinha. */
@@ -54,6 +74,7 @@ export function Palco({
   fase,
   aoRepetir,
   falando = false,
+  cena,
   children,
   feedback,
   className,
@@ -78,6 +99,8 @@ export function Palco({
           </button>
         ) : null}
       </header>
+
+      {cena ? <div className={estilos.cena}>{cena}</div> : null}
 
       <ul className={estilos.grade}>{children}</ul>
 
