@@ -8,9 +8,19 @@
  * escrito para ler, não há conta, não há placar e não há como errar — tocar em
  * algo já contado simplesmente não faz nada (nem conta, nem fala).
  *
+ * MOTOR REUSADO POR OUTRO MODO (inglês): as PALAVRAS da contagem e o TETO de
+ * objetos são injetáveis (`OpcoesContagem.falas` / `OpcoesContagem.maximo`),
+ * com o pacote pt-BR e o teto 5 como PADRÃO. O baralho de números do modo
+ * inglês (`ingles.ts`) reaproveita esta mesma máquina de estados passando
+ * "one, two, three…" e teto 10 — em vez de duplicar as regras de "não conta
+ * duas vezes", "ordem livre" e "não existe perder", que são justamente as
+ * partes difíceis de acertar. Quem NÃO passa nada continua com o modo Contar
+ * de sempre, byte a byte.
+ *
  * INVARIANTES (cobertos por contar.test.ts)
- *  1. A contagem NUNCA passa de 5 (`MAX_CONTAGEM`) — nem por config nem por
- *     sorteio da próxima rodada.
+ *  1. A contagem NUNCA passa de 5 (`MAX_CONTAGEM`) no modo Contar — nem por
+ *     config nem por sorteio da próxima rodada. O teto só sobe quando quem
+ *     chama pede `maximo` explicitamente (o inglês conta até 10).
  *  2. O mesmo objeto não incrementa duas vezes: `contarObjeto` devolve
  *     `mudou: false` e `falas: []` para um objeto já contado (duplo toque,
  *     multi-touch, criança martelando).
@@ -48,6 +58,38 @@ const NUMEROS_COM_GENERO: Readonly<Record<Genero, readonly string[]>> = {
   f: ["uma", "duas", "três", "quatro", "cinco"],
 };
 
+/**
+ * TUDO o que esta máquina fala, num pacote injetável — é o que permite o modo
+ * inglês reusar a máquina inteira sem duplicá-la (ver o cabeçalho). O motor
+ * nunca monta texto sozinho: pergunta pro pacote.
+ */
+export interface FalasContagem {
+  /** Palavra de cada número, na ordem (índice 0 = o primeiro objeto contado). */
+  readonly numeros: readonly string[];
+  /**
+   * Fala do total, no fim da contagem. `null` = não fala nada além do
+   * último número — é o caso do inglês: a última palavra contada ("nine")
+   * JÁ É o total, então falar de novo ("Nine!") logo em seguida vira eco
+   * para uma criança de 3 anos, não reforço (em pt-BR "nove" e "São nove
+   * peixinhos!" são frases diferentes, então o total continua fazendo
+   * sentido lá — ver `FALAS_CONTAGEM_PT_BR`).
+   */
+  readonly total: ((n: number, forma: FormaObjeto) => string) | null;
+  /**
+   * Fala da comemoração (`comemorar`). `null` = a etapa fecha em silêncio —
+   * é o caso do inglês, onde a comemoração já aconteceu ANTES da contagem
+   * (no acerto do número), e repetir seria ruído.
+   */
+  readonly festa: string | null;
+}
+
+/** O modo Contar de sempre. Padrão de `criarContagem` — não mexer. */
+export const FALAS_CONTAGEM_PT_BR: FalasContagem = {
+  numeros: NUMEROS,
+  total: falaDoTotal,
+  festa: "Muito bem!",
+};
+
 // ------------------------------------------------------------------ tipos
 
 export type FaseContagem = "contando" | "total" | "festa";
@@ -75,6 +117,8 @@ export interface EstadoContagem {
   readonly cor: string;
   /** Texto falado da pergunta ("Vamos contar os peixinhos!"). */
   readonly pergunta: string;
+  /** Pacote de falas desta contagem (pt-BR por padrão — ver `FalasContagem`). */
+  readonly falas: FalasContagem;
   readonly fase: FaseContagem;
   /** Incrementa a cada transição aceita — serve de `key`/guarda de timer. */
   readonly versao: number;
@@ -89,12 +133,23 @@ export interface TransicaoContagem {
 // ----------------------------------------------------------------- criação
 
 export interface OpcoesContagem {
-  /** Quantos bichinhos. Fora de 1..5 é limitado ao intervalo (nunca passa de 5). */
+  /** Quantos bichinhos. Fora de 1..`maximo` é limitado ao intervalo. */
   quantidade: number;
   forma?: FormaObjeto;
   /** Sobrescreve a cor da forma (padrão: a cor que essa forma tem em `cores.ts`). */
   cor?: string;
   sortear?: Sorteio;
+  /**
+   * Teto de objetos. Padrão `MAX_CONTAGEM` (5) — o teto pedagógico do modo
+   * Contar em pt-BR, que ninguém deve mexer. O baralho de números do inglês
+   * ensina até "ten", então passa 10 aqui: são objetivos diferentes (lá a
+   * criança escolhe entre quantidades desenhadas, aqui ela conta na mão).
+   */
+  maximo?: number;
+  /** Palavras faladas. Padrão: `FALAS_CONTAGEM_PT_BR`. */
+  falas?: FalasContagem;
+  /** Sobrescreve o texto da pergunta (o inglês usa só a palavra: "Eight!"). */
+  pergunta?: string;
 }
 
 /** Cor canônica da forma — a MESMA tabela cor<->forma do modo cores. */
@@ -104,11 +159,15 @@ export function corDaForma(forma: FormaObjeto): string {
   return encontrada.hex;
 }
 
-/** Limita a quantidade ao intervalo pedagógico 1..5. */
-export function limitarQuantidade(valor: number): number {
+/**
+ * Limita a quantidade ao intervalo 1..`maximo`. O padrão é o teto pedagógico
+ * de 5 do modo Contar — quem não passa `maximo` continua limitado a 5.
+ */
+export function limitarQuantidade(valor: number, maximo: number = MAX_CONTAGEM): number {
+  const teto = Math.max(MIN_CONTAGEM, Math.round(Number(maximo)) || MAX_CONTAGEM);
   const n = Math.round(Number(valor));
   if (!Number.isFinite(n)) return MIN_CONTAGEM;
-  return Math.min(MAX_CONTAGEM, Math.max(MIN_CONTAGEM, n));
+  return Math.min(teto, Math.max(MIN_CONTAGEM, n));
 }
 
 export function criarContagem({
@@ -116,8 +175,11 @@ export function criarContagem({
   forma = "peixe",
   cor,
   sortear = Math.random,
+  maximo = MAX_CONTAGEM,
+  falas = FALAS_CONTAGEM_PT_BR,
+  pergunta,
 }: OpcoesContagem): EstadoContagem {
-  const total = limitarQuantidade(quantidade);
+  const total = limitarQuantidade(quantidade, maximo);
   const info = FORMAS[forma];
   if (!info) throw new Error(`Forma desconhecida no modo contar: ${forma}`);
 
@@ -133,7 +195,8 @@ export function criarContagem({
     contados: [],
     forma,
     cor: cor ?? corDaForma(forma),
-    pergunta: `Vamos contar ${info.genero === "f" ? "as" : "os"} ${info.plural}!`,
+    pergunta: pergunta ?? `Vamos contar ${info.genero === "f" ? "as" : "os"} ${info.plural}!`,
+    falas,
     fase: "contando",
     versao: 0,
   };
@@ -183,14 +246,16 @@ export function contarObjeto(estado: EstadoContagem, id: string): TransicaoConta
       // A versão entra na chave para o mesmo número poder ser falado de novo
       // numa rodada seguinte sem cair no dedupe da fila.
       chave: `numero:${n}:${estado.versao}`,
-      texto: NUMEROS[n - 1] ?? String(n),
+      texto: estado.falas.numeros[n - 1] ?? String(n),
       prioridade: "alta",
     },
   ];
-  if (completou) {
+  // `total: null` (pacote do inglês) = pular esta fala de propósito: o
+  // último número já dito É o total, repeti-lo em seguida seria eco.
+  if (completou && estado.falas.total) {
     falas.push({
       chave: `total:${total}:${estado.versao}`,
-      texto: falaDoTotal(total, estado.forma),
+      texto: estado.falas.total(total, estado.forma),
       prioridade: "normal",
     });
   }
@@ -207,15 +272,21 @@ export function contarObjeto(estado: EstadoContagem, id: string): TransicaoConta
   };
 }
 
-/** `total -> festa`: comemoração antes da próxima rodada. */
+/**
+ * `total -> festa`: comemoração antes da próxima rodada. Com
+ * `falas.festa === null` (o pacote do inglês) a transição acontece igual, só
+ * que em silêncio — a comemoração de lá já foi no acerto do número.
+ */
 export function comemorar(estado: EstadoContagem): TransicaoContagem {
   if (estado.fase !== "total") return ignorada(estado);
+  const texto = estado.falas.festa;
   return {
     estado: { ...estado, fase: "festa", versao: estado.versao + 1 },
     mudou: true,
-    falas: [
-      { chave: `festa:${estado.versao}`, texto: "Muito bem!", prioridade: "normal" },
-    ],
+    falas:
+      texto === null
+        ? []
+        : [{ chave: `festa:${estado.versao}`, texto, prioridade: "normal" }],
   };
 }
 

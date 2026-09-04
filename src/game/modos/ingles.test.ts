@@ -14,17 +14,25 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { criarRodada, tocar } from "../engine.ts";
+import { comemorar, contarObjeto } from "./contar.ts";
+import { peca } from "./cores.ts";
 import {
   BARALHOS_INGLES,
+  CORES_INGLES,
   COTIDIANO_INGLES,
+  FALAS_CONTAGEM_NUMEROS_INGLES,
   FAMILIA_INGLES,
+  IDS_COR_INGLES,
   IDS_COTIDIANO,
   IDS_NUMERO,
   IDS_SAUDACAO,
   NUMEROS_INGLES,
   SAUDACOES_INGLES,
   TAMANHO_SUBCONJUNTO_NUMEROS,
+  corInglesPorId,
+  criarContagemNumeroIngles,
   criarSorteio,
+  montarRodadaCoresIngles,
   montarRodadaCotidiano,
   montarRodadaFamiliaIngles,
   montarRodadaNumeros,
@@ -52,7 +60,7 @@ test("validarCatalogoIngles passa e os 4 baralhos existem com ids estáveis", ()
   assert.equal(validarCatalogoIngles(), true);
   assert.deepEqual(
     BARALHOS_INGLES.map((b) => b.id),
-    ["numeros", "cotidiano", "familia", "saudacoes"],
+    ["numeros", "cotidiano", "familia", "saudacoes", "cores"],
   );
 
   assert.equal(NUMEROS_INGLES.length, 10);
@@ -64,6 +72,7 @@ test("validarCatalogoIngles passa e os 4 baralhos existem com ids estáveis", ()
   assert.ok(COTIDIANO_INGLES.length >= 8, "pool de cotidiano pequeno demais");
   assert.ok(FAMILIA_INGLES.length === 4);
   assert.ok(SAUDACOES_INGLES.length === 4);
+  assert.ok(CORES_INGLES.length === 5);
 
   // ids são strings estáveis e não vazias, sem duplicar entre si.
   for (const [nome, itens] of [
@@ -71,6 +80,7 @@ test("validarCatalogoIngles passa e os 4 baralhos existem com ids estáveis", ()
     ["cotidiano", COTIDIANO_INGLES],
     ["familia", FAMILIA_INGLES],
     ["saudacoes", SAUDACOES_INGLES],
+    ["cores", CORES_INGLES],
   ] as const) {
     const ids = itens.map((i) => i.id);
     assert.equal(new Set(ids).size, ids.length, `${nome}: ids duplicados`);
@@ -160,6 +170,79 @@ test("números: cada rodada sorteia um subconjunto (não expõe o pool de 10 int
 test("números: palavra vem do catálogo (one..ten) e id desconhecido lança", () => {
   assert.equal(numeroPorId("3").palavra, "three");
   assert.throws(() => numeroPorId("11"), /Número desconhecido/);
+});
+
+// ------------------------------------------- contagem pós-acerto (números)
+
+test("contagem de números (inglês): fala one..ten na ordem e não repete o total (eco)", () => {
+  assert.deepEqual(FALAS_CONTAGEM_NUMEROS_INGLES.numeros, [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+  ]);
+  // O total é `null` de propósito: a última palavra contada ("nine") JÁ É o
+  // total — falar "Nine!" logo em seguida seria eco, não reforço (ver
+  // comentário de `FALAS_CONTAGEM_NUMEROS_INGLES.total` em ingles.ts).
+  assert.equal(FALAS_CONTAGEM_NUMEROS_INGLES.total, null);
+  // A comemoração já aconteceu no acerto do número — silêncio aqui de propósito.
+  assert.equal(FALAS_CONTAGEM_NUMEROS_INGLES.festa, null);
+});
+
+test("contagem de números (inglês): monta exatamente `valor` objetos e conta até o total em en", () => {
+  for (const id of IDS_NUMERO) {
+    const sortear = criarSorteio(20260904);
+    const estado = criarContagemNumeroIngles(id, sortear, "Eight!");
+    const item = numeroPorId(id);
+    assert.equal(estado.objetos.length, item.valor, `id ${id}: quantidade errada de objetos`);
+    assert.equal(estado.forma, "peixe");
+    assert.equal(estado.pergunta, "Eight!", "pergunta repassada intacta para o <Palco>");
+    assert.equal(estado.falas, FALAS_CONTAGEM_NUMEROS_INGLES);
+
+    // Toca cada objeto na ordem e confere a fala de cada um — SEM eco do
+    // total no fim: a última palavra contada já é o total (ver `total:
+    // null` em `FALAS_CONTAGEM_NUMEROS_INGLES`).
+    let atual = estado;
+    const falado: string[] = [];
+    for (const objeto of atual.objetos) {
+      const t = contarObjeto(atual, objeto.id);
+      assert.equal(t.mudou, true);
+      atual = t.estado;
+      for (const f of t.falas) falado.push(f.texto);
+    }
+    const esperado = [...FALAS_CONTAGEM_NUMEROS_INGLES.numeros.slice(0, item.valor)];
+    assert.deepEqual(falado, esperado, `id ${id}: sequência de falas errada (eco do total?)`);
+    assert.equal(falado.at(-1), item.palavra, `id ${id}: última palavra falada só uma vez, sem eco`);
+    assert.equal(atual.fase, "total");
+
+    // A festa fecha em silêncio (festa: null) — mesmo assim a transição acontece.
+    const festa = comemorar(atual);
+    assert.equal(festa.mudou, true);
+    assert.equal(festa.estado.fase, "festa");
+    assert.deepEqual(festa.falas, []);
+  }
+});
+
+test("contagem de números (inglês): teto pedagógico do pt-BR (5) não se aplica — chega a dez", () => {
+  const sortear = criarSorteio(1);
+  const dez = criarContagemNumeroIngles("10", sortear);
+  assert.equal(dez.objetos.length, 10);
+});
+
+test("contagem de números (inglês): objeto já contado não fala de novo (não existe perder)", () => {
+  const sortear = criarSorteio(7);
+  const estado = criarContagemNumeroIngles("3", sortear);
+  const primeiro = contarObjeto(estado, estado.objetos[0].id);
+  assert.equal(primeiro.mudou, true);
+  const repetido = contarObjeto(primeiro.estado, estado.objetos[0].id);
+  assert.equal(repetido.mudou, false);
+  assert.deepEqual(repetido.falas, []);
 });
 
 // ------------------------------------------------------------- cotidiano
@@ -256,4 +339,81 @@ test("saudações: id dobra como referência do desenho, sem depender de ilustra
   assert.equal(saudacaoPorId("hello").palavra, "hello");
   assert.equal(saudacaoPorId("byeBye").palavra, "bye bye");
   assert.throws(() => saudacaoPorId("oi"), /Saudação desconhecida/);
+});
+
+// ----------------------------------------------------------------- cores
+
+test("cores: rodada nunca repete alternativa e a correta está nela", () => {
+  checarRodadasValidas("cores", (qtd, sortear) => montarRodadaCoresIngles({ qtd, sortear }));
+});
+
+test("cores: palavra vem do catálogo (red/blue/yellow/green/purple) e id desconhecido lança", () => {
+  assert.deepEqual(IDS_COR_INGLES, CORES_INGLES.map((c) => c.id));
+  assert.equal(corInglesPorId("vermelho").palavra, "red");
+  assert.equal(corInglesPorId("azul").palavra, "blue");
+  assert.equal(corInglesPorId("amarelo").palavra, "yellow");
+  assert.equal(corInglesPorId("verde").palavra, "green");
+  assert.equal(corInglesPorId("roxo").palavra, "purple");
+  assert.throws(() => corInglesPorId("rosa"), /Cor desconhecida/);
+});
+
+test("cores: pergunta e festa são SÓ a palavra, sem frase de apoio (regra nova do topo do arquivo)", () => {
+  const sortear = criarSorteio(7);
+  for (let i = 0; i < 10; i++) {
+    const r = montarRodadaCoresIngles({ qtd: 3, sortear });
+    const esperado = `${corInglesPorId(r.correta).palavra.charAt(0).toUpperCase()}${corInglesPorId(r.correta).palavra.slice(1)}!`;
+    assert.equal(r.pergunta, esperado);
+    assert.equal(r.festa, esperado);
+  }
+});
+
+test("cores: TODAS as alternativas de uma rodada usam a MESMA forma (exceção documentada — aqui a cor é a pista)", () => {
+  for (const semente of SEMENTES) {
+    const sortear = criarSorteio(semente);
+    for (const qtd of [2, 3, 4] as const) {
+      for (let i = 0; i < 20; i++) {
+        const r = montarRodadaCoresIngles({ qtd, sortear });
+        // A forma é uma só por rodada (o tipo já garante isso: `forma` é
+        // singular, não um array) — o desenho de CADA alternativa na tela
+        // usa exatamente `r.forma` (ver page.tsx), então não há o que somar
+        // aqui além de confirmar que ela é uma forma válida do catálogo.
+        assert.ok(
+          ["concha", "estrela", "aguaViva", "bolha", "peixe"].includes(r.forma),
+          `forma inválida sorteada: ${r.forma}`,
+        );
+      }
+    }
+  }
+});
+
+test("cores: a forma sorteada NUNCA é a que a bijeção de cores.ts associa à cor correta", () => {
+  for (const semente of SEMENTES) {
+    const sortear = criarSorteio(semente);
+    for (let i = 0; i < 200; i++) {
+      const r = montarRodadaCoresIngles({ qtd: 4, sortear });
+      const formaBijetada = peca(r.correta).forma;
+      assert.notEqual(
+        r.forma,
+        formaBijetada,
+        `semente ${semente}: forma da rodada (${r.forma}) é a mesma bijetada à cor correta (${r.correta})`,
+      );
+    }
+  }
+});
+
+test("cores: nunca duas alternativas da mesma cor", () => {
+  const sortear = criarSorteio(2026);
+  for (let i = 0; i < 50; i++) {
+    const r = montarRodadaCoresIngles({ qtd: 4, sortear });
+    assert.equal(new Set(r.alternativas).size, r.alternativas.length);
+  }
+});
+
+test("cores: figurinha usa o prefixo 'ingles-' + id da palavra (coerente com PREFIXO.ingles)", () => {
+  // `idFigurinha` mora em recompensa.ts — este módulo não importa de lá (regra
+  // de pureza), então o teste só confirma que `correta` (o que a página usa
+  // como chave) é um `CorId` estável do catálogo, igual aos outros baralhos.
+  const sortear = criarSorteio(11);
+  const r = montarRodadaCoresIngles({ qtd: 2, sortear });
+  assert.ok(IDS_COR_INGLES.includes(r.correta));
 });

@@ -5,17 +5,60 @@
 
 /* ------------------------------------------------------ baralho números */
 
-/* Contagem visual (baralho `numeros`, no espírito do modo Contar): peixinhos
-   em grade, um por unidade — nunca um numeral escrito, a criança de 3 anos
-   não lê. Cabe até 10 dentro da bolha da alternativa. */
+/* ALGARISMO + CONTAGEM JUNTOS — DECISÃO REVERTIDA a pedido EXPLÍCITO do
+   dono do projeto (2026-09-04): a versão anterior deste comentário dizia
+   "no espírito do modo Contar: nunca um numeral escrito" e cada alternativa
+   mostrava só os peixinhos. O dono pediu que o algarismo (`8`) apareça
+   JUNTO da quantidade desenhada — não no lugar dela — para a criança ligar
+   três coisas ao mesmo tempo: a quantidade que vê, o símbolo escrito e a
+   palavra que ouve (`Eight!`). Isso vale SÓ para este baralho de inglês; o
+   modo "Contar" (`src/app/jogo/contar`, `Album.module.css`,
+   `objetos.module.css`) continua sem numeral — não é o mesmo produto, não
+   reverter aquele por causa deste. NÃO REVERTER `.algarismo` de volta para
+   "só contagem" sem combinar com o dono do projeto de novo. */
+.numeroConteudo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, 1.2vmin, 8px);
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* Bolha do algarismo: tamanho fixo (não `%`, que exigiria altura definida
+   em cascata dentro do flex column) — mesma família de `clamp()` usada em
+   `TAMANHO_ICONE_COMPOSTO` (page.tsx), só que menor porque divide a bolha
+   da alternativa com a contagem. Nunca menor que 26px: em 88px (o alvo de
+   toque mínimo) ainda precisa ser lido de relance por um adulto/criança. */
+.algarismo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: clamp(26px, 9vmin, 44px);
+  block-size: clamp(26px, 9vmin, 44px);
+  border-radius: 999px;
+  background: var(--color-mar-900);
+  color: var(--color-espuma);
+  font-weight: 800;
+  font-size: clamp(0.95rem, 4.6vmin, 1.6rem);
+  line-height: 1;
+}
+
+/* Peixinhos em grade, um por unidade — a contagem visual continua igual,
+   só divide o espaço da bolha com `.algarismo` agora (por isso `flex: 1` +
+   `min-block-size: 0`, o truque padrão para um item de flex column encolher
+   sem estourar o pai). Cabe até 10 dentro da bolha da alternativa. */
 .contagem {
   display: flex;
   flex-wrap: wrap;
   align-content: center;
   justify-content: center;
   gap: 3%;
-  inline-size: 82%;
-  block-size: 82%;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  inline-size: 92%;
 }
 
 .pontoContagem {
@@ -47,8 +90,12 @@
   inline-size: clamp(28px, 7vmin, 60px);
 }
 
-/* "Números": contagem visual — no espírito do modo Contar, nunca um
-   numeral escrito. */
+/* "Números": este é só o ÍCONE do cartão de escolha do baralho (4 peixinhos
+   fixos, não uma rodada real) — continua sem algarismo de propósito, porque
+   não há nenhum número "correto" aqui para escrever ao lado. O algarismo
+   pedido pelo dono do projeto (ver `.algarismo` acima) entra nas
+   ALTERNATIVAS DE VERDADE, dentro da rodada, onde cada bolha tem um valor
+   concreto. Não confundir os dois: este ícone não é uma alternativa. */
 .iconeContagem {
   display: flex;
   flex-wrap: wrap;
@@ -84,6 +131,19 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+/* "Cores": a MESMA forma (bolha) em cada uma das cores do catálogo — o
+   cartão já ensaia a exceção do baralho (ver cabeçalho de `ingles.ts`):
+   aqui é a COR que muda entre as peças, nunca a forma. Mesmo layout de
+   `.iconeContagem`, com nome próprio pela leitura do código. */
+.iconeCores {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 8px;
   inline-size: clamp(130px, 26vmin, 270px);
 }
 

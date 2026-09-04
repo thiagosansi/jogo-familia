@@ -250,6 +250,15 @@ export interface SinteseFala {
   cancel(): void;
   speak(fala: UtteranceFala): void;
   getVoices(): SpeechSynthesisVoice[];
+  /**
+   * `true` enquanto o motor "acha" que está narrando alguma coisa AGORA
+   * (existe em `window.speechSynthesis` de verdade). Mantido na interface
+   * por completude, mas `tocarTexto` NÃO usa este campo para decidir se o
+   * motor travou: medição real mostrou `speaking: true` tanto no caso
+   * saudável quanto no motor genuinamente travado (ver o comentário de
+   * `desistir()` em `tocarTexto`) — não é prova de saúde de nada.
+   */
+  readonly speaking?: boolean;
 }
 
 /**
@@ -262,8 +271,6 @@ export interface AmbienteFala {
   sintese: SinteseFala | undefined;
   criarFala(texto: string): UtteranceFala;
   esperarGesto(sinal?: AbortSignal): Promise<void>;
-  /** Quanto esperar por `onstart` antes de desistir da tentativa (voz local). */
-  msEsperaInicio?: number;
   /**
    * Override do teto da rede de segurança (`timerLimite`) — só para testes.
    * Em produção o teto sempre vem da fórmula baseada no texto (ver
@@ -272,19 +279,6 @@ export interface AmbienteFala {
    */
   msLimiteFala?: number;
 }
-
-/** `msEsperaInicio` padrão em produção — folga generosa para hardware lento. */
-const MS_ESPERA_INICIO_PADRAO = 1500;
-/**
- * Voz remota (ex.: vozes do Google no Chrome, que dependem de rede) pode
- * legitimamente levar bem mais que `msEsperaInicio` até o 1º `onstart` — não
- * é travamento, é carregamento. Multiplicamos a janela em vez de usar o
- * mesmo prazo da voz local, para não gerar falso positivo de "motor
- * travado". 3x mantém o pior caso (1ª tentativa + retry, ambas remotas:
- * 1500 * 3 * 2 = 9000ms em produção) folgado mas ainda abaixo do teto de
- * 12s do `timerLimite`.
- */
-const MULTIPLICADOR_ESPERA_VOZ_REMOTA = 3;
 
 function ambientePadrao(): AmbienteFala {
   return {
@@ -301,17 +295,17 @@ function ambientePadrao(): AmbienteFala {
       const { esperarGesto } = await import("@/lib/media");
       await esperarGesto(sinal);
     },
-    msEsperaInicio: MS_ESPERA_INICIO_PADRAO,
   };
 }
 
 // ---------------------------------------------------- saúde da voz (TTS)
 
 /**
- * `true` quando `tocarTexto` esgotou o retry sem o motor de TTS sequer
- * iniciar a fala (Chrome/macOS trava assim — ver `knowledge` "Sem audio no
- * desktop"). A UI assina isto para avisar o adulto, em vez do jogo ficar
- * mudo sem explicação.
+ * `true` quando o `timerLimite` de `tocarTexto` estourou sem que `onstart`
+ * NEM `onend` tivessem disparado — o motor de TTS travou de verdade
+ * (Chrome/macOS trava assim; ver a medição real no comentário de `desistir`,
+ * dentro de `tocarTexto`). A UI assina isto para avisar o adulto, em vez do
+ * jogo ficar mudo sem explicação.
  */
 let vozIndisponivel = false;
 const ouvintesSaudeDaVoz = new Set<(indisponivel: boolean) => void>();
@@ -421,24 +415,31 @@ export function motorDoBrowser(ambiente?: AmbienteFala): MotorFala {
 
       await new Promise<void>((resolve) => {
         let concluida = false;
-        // Qual utterance é "a de agora" — descarta eventos tardios de
-        // tentativas já abandonadas (o `cancel()` do retry dispara
-        // `onerror: canceled` na antiga, que não pode terminar a Promise).
-        let falaAtual: UtteranceFala | null = null;
-        let watchdog: ReturnType<typeof setTimeout> | null = null;
-        let tentativas = 0;
-        const msInicio = amb.msEsperaInicio ?? MS_ESPERA_INICIO_PADRAO;
+        // Único sinal confiável de que a fala realmente começou. NÃO existe
+        // `sintese.speaking` aqui de propósito — ver o porquê na medição
+        // real dentro de `desistir()` abaixo: `speaking` vale `true` tanto
+        // no caso saudável quanto no motor travado, então não serve de
+        // prova de nada.
+        let onstartAconteceu = false;
 
-        // Safari às vezes engole o `onend`: rede de segurança por tempo
-        // estimado para a fala INTEIRA. Independente do watchdog abaixo —
-        // um cobre "nunca começou", o outro cobre "começou e nunca terminou".
+        const fala = amb.criarFala(texto);
+        fala.lang = idioma;
+        fala.rate = taxa;
+        fala.pitch = 1.1;
+        const voz = vozParaIdioma(sintese!, idioma);
+        if (voz) fala.voice = voz;
+
+        // Única rede de segurança: tempo estimado para a fala INTEIRA (até
+        // 12s). Cobre os dois jeitos de dar errado — "onend nunca chegou"
+        // (fala tocou, só o evento sumiu) e "motor travado de verdade" (nem
+        // onstart nem onend chegam) — `desistir()` abaixo distingue os dois
+        // pelo único sinal que sobrou: `onstartAconteceu`.
         const limite = amb.msLimiteFala ?? Math.min(12000, 1200 + (texto.length / Math.max(taxa, 0.5)) * 110);
         const timerLimite = setTimeout(desistir, limite);
 
         function limpar() {
           clearTimeout(timerLimite);
-          if (watchdog) clearTimeout(watchdog);
-          sinal.removeEventListener("abort", desistir);
+          sinal.removeEventListener("abort", abortarExterno);
         }
 
         function terminar() {
@@ -448,81 +449,67 @@ export function motorDoBrowser(ambiente?: AmbienteFala): MotorFala {
           resolve();
         }
 
-        // Cancela o motor real antes de resolver a Promise. Sem isto, o
-        // caminho do `timerLimite` (e o do abort externo) libera a fila mas
-        // o motor de verdade continua narrando a utterance abandonada — se
-        // for o último item, a criança ouve a fala "morta" continuar depois
-        // da UI já achar que tudo terminou. NÃO marca `vozIndisponivel`
-        // aqui: tanto o `timerLimite` (fala começou, só o `onend` sumiu)
-        // quanto o abort externo (troca de tela) não são sinal de motor
-        // travado — só o watchdog abaixo, que cobre "nunca nem começou".
-        function desistir() {
+        // Abort externo (troca de tela / unmount) — não é sinal de motor
+        // travado, só libera a fila. Cancela o motor real antes de resolver:
+        // sem isto o motor de verdade continuaria narrando a utterance
+        // abandonada mesmo com a UI já achando que acabou.
+        function abortarExterno() {
           sintese!.cancel();
           terminar();
         }
 
-        function iniciarTentativa() {
-          tentativas += 1;
-          const fala = amb.criarFala(texto);
-          fala.lang = idioma;
-          fala.rate = taxa;
-          fala.pitch = 1.1;
-          const voz = vozParaIdioma(sintese!, idioma);
-          if (voz) fala.voice = voz;
-          falaAtual = fala;
-          // Voz local (localService === true — a preferida por `vozParaIdioma`,
-          // caso normal no macOS/iOS) inicia rápido: janela curta. Voz
-          // remota, ou nenhuma voz escolhida ainda (não dá pra saber o que
-          // o motor vai usar), pode legitimamente demorar mais para o 1º
-          // `onstart` porque depende de rede — janela alargada evita marcar
-          // `vozIndisponivel` só porque a voz do Google estava carregando.
-          const janelaEspera = voz?.localService ? msInicio : msInicio * MULTIPLICADOR_ESPERA_VOZ_REMOTA;
-
-          fala.onstart = () => {
-            if (falaAtual !== fala) return; // start atrasado de tentativa já trocada
-            if (watchdog) {
-              clearTimeout(watchdog);
-              watchdog = null;
-            }
-            // Falou de verdade: qualquer travamento anterior já passou.
-            marcarSaudeDaVoz(false);
-          };
-          fala.onend = () => {
-            if (falaAtual !== fala) return;
-            terminar();
-          };
-          fala.onerror = () => {
-            if (falaAtual !== fala) return; // 'canceled' do retry — ignora
-            // 'not-allowed' é falta de gesto, não travamento: nunca marca
-            // indisponível aqui — só o watchdog (abaixo) faz isso, e só
-            // depois da 2ª tentativa sem `onstart`.
-            terminar();
-          };
-
-          watchdog = setTimeout(() => {
-            if (falaAtual !== fala) return;
-            if (tentativas >= 2) {
-              // 2ª tentativa também não iniciou: motor travado de verdade.
-              sintese!.cancel();
-              marcarSaudeDaVoz(true);
-              terminar();
-              return;
-            }
-            // Retry único. Invalida a tentativa presa ANTES do cancel() —
-            // senão o 'onerror: canceled' dela seria lido como desta mesma
-            // tentativa e a Promise terminaria cedo demais. Cancelar antes
-            // de um novo `speak()` também evita fala dupla se o `start` da
-            // tentativa velha chegar bem na hora do retry.
-            falaAtual = null;
-            sintese!.cancel();
-            iniciarTentativa();
-          }, janelaEspera);
-
-          sintese!.speak(fala);
+        /**
+         * `timerLimite` estourou: nem `onend` (fala terminou) nem, se for o
+         * caso, `onstart` chegaram a tempo. Antes esta função tentava usar
+         * `sintese.speaking` para diferenciar "motor travado" de "fala já
+         * tocando" e disparava um `speak()` de novo (retry). ISSO ESTAVA
+         * ERRADO e foi removido: numa sessão de diagnóstico com o Chrome/
+         * macOS genuinamente travado, capturamos
+         *
+         *   { ms: 6337, result: "TIMEOUT", started: false, speaking: true, pending: false }
+         *   { ms: 4998, result: "TIMEOUT", started: false, speaking: true }
+         *
+         * ou seja: no travamento REAL, `speaking` também vale `true` — o
+         * motor "aceita" a fala e nunca mais sai desse estado (nem
+         * `cancel()`, `pause()` ou `resume()` recuperam; só fechar e reabrir
+         * o navegador). `speaking` não diferencia travado de saudável.
+         *
+         * O que diferencia é `onend`: caso saudável sem `onstart` (bug
+         * comum do Chrome/macOS onde o evento simplesmente não dispara,
+         * mesmo com a fala tocando) ainda assim dispara `onend` quando
+         * termina — e nesse caso `terminar()` já rodou por `fala.onend`
+         * MUITO antes deste timer estourar, então nunca chegamos aqui. Se
+         * chegamos aqui é porque nem `onstart` nem `onend` vieram: só resta
+         * o caso "motor travado de verdade" (quando `onstartAconteceu` é
+         * `false`) ou "onstart chegou mas o `onend` sumiu" (Safari — a fala
+         * tocou, não é travamento). Sem retry: uma tentativa só, nunca dois
+         * `speak()` da mesma fala — é o que elimina a palavra repetida.
+         */
+        function desistir() {
+          sintese!.cancel();
+          if (!onstartAconteceu) {
+            marcarSaudeDaVoz(true);
+          }
+          terminar();
         }
 
-        sinal.addEventListener("abort", desistir, { once: true });
-        iniciarTentativa();
+        fala.onstart = () => {
+          onstartAconteceu = true;
+          // Falou de verdade: qualquer travamento anterior já passou.
+          marcarSaudeDaVoz(false);
+        };
+        fala.onend = () => {
+          terminar();
+        };
+        fala.onerror = () => {
+          // 'not-allowed' é falta de gesto do usuário, não travamento do
+          // motor — nunca marca indisponível aqui. Só `desistir()` faz isso,
+          // e só quando nem onstart nem onend chegaram no prazo.
+          terminar();
+        };
+
+        sinal.addEventListener("abort", abortarExterno, { once: true });
+        sintese!.speak(fala);
       });
     },
   };

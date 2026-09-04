@@ -1,20 +1,21 @@
 "use client";
 
 /**
- * /jogo/ingles — mini-jogo "inglês" (eixo `ingles`), quatro baralhos num só
+ * /jogo/ingles — mini-jogo "inglês" (eixo `ingles`), cinco baralhos num só
  * fluxo: números (1-10), cotidiano (bichos/formas já conhecidos), família
- * (fotos já cadastradas) e saudações. `<Palco>`/`useRodada` (`@/game/useRodada`)
- * exatamente como os outros mini-jogos.
+ * (fotos já cadastradas), saudações e cores (red/blue/yellow/green/purple).
+ * `<Palco>`/`useRodada` (`@/game/useRodada`) exatamente como os outros
+ * mini-jogos.
  *
  * TELA DE ESCOLHA — DECISÃO REVERTIDA (não mexer sem combinar com o dono do
  * projeto): uma versão anterior deste comentário afirmava "SEM tela de
  * escolha, criança de 3 anos não escolhe menu" e a tela entrava direto
- * sorteando entre os quatro baralhos ("Tudo misturado"). O dono do projeto
- * pediu EXPLICITAMENTE a opção de escolha — a frase acima estava errada para
- * este jogo. Por isso `/jogo/ingles` abre em `<TelaEscolhaExercicio>`: cinco
- * cartões grandes (Tudo misturado, Números, Palavras, Família, Saudações),
- * cada um reconhecível pelo DESENHO (a criança ainda não lê — isso continua
- * valendo), no mesmo padrão visual da home (`.tela`/`.grade-modos`/
+ * sorteando entre os baralhos ("Tudo misturado"). O dono do projeto pediu
+ * EXPLICITAMENTE a opção de escolha — a frase acima estava errada para este
+ * jogo. Por isso `/jogo/ingles` abre em `<TelaEscolhaExercicio>`: seis
+ * cartões grandes (Tudo misturado, Números, Palavras, Família, Saudações,
+ * Cores), cada um reconhecível pelo DESENHO (a criança ainda não lê — isso
+ * continua valendo), no mesmo padrão visual da home (`.tela`/`.grade-modos`/
  * `.card-modo` de `globals.css`). A última escolha fica salva no aparelho
  * (`localStorage`, ver `lerEscolhaSalva`/`salvarEscolha`) para não obrigar a
  * escolher de novo a cada abertura, e o botão "Trocar" (canto inferior
@@ -22,21 +23,26 @@
  * REVERTER isto para "sorteia sozinho, sem tela" de novo.
  *
  * O CONTEÚDO (catálogos, `montarRodadaX`, regra "o inglês nunca chega
- * sozinho") mora inteiro em `@/game/modos/ingles` — PURO e testado. Esta
- * tela só: (1) deixa a criança escolher o baralho (ou "Tudo misturado", que
- * sorteia entre os quatro como antes), (2) traduz cada rodada para o
- * `<Palco>`, e (3) desenha cada alternativa com o componente certo:
- * contagem visual para números, `<Bicho>`/`<ObjetoMar>` (reaproveitados de
- * animais/cores) para cotidiano, `<Personagem>` (a foto) para família,
- * `<Saudacao>` para saudações.
+ * sozinho" e a exceção documentada dela em `cores`) mora inteiro em
+ * `@/game/modos/ingles` — PURO e testado. Esta tela só: (1) deixa a criança
+ * escolher o baralho (ou "Tudo misturado", que sorteia entre os cinco como
+ * antes), (2) traduz cada rodada para o `<Palco>`, e (3) desenha cada
+ * alternativa com o componente certo: contagem visual para números,
+ * `<Bicho>`/`<ObjetoMar>` (reaproveitados de animais/cores) para cotidiano,
+ * `<Personagem>` (a foto) para família, `<Saudacao>` para saudações, e
+ * `<ObjetoMar>` de novo para cores — mas com a MESMA forma sorteada por
+ * rodada em todas as alternativas (ver `ConteudoAlternativa`), porque neste
+ * baralho a cor é a única pista de propósito.
  *
  * DUAS VOZES, DECISÃO DE PRODUTO JÁ TOMADA (não mexer sem combinar):
- *  - a PERGUNTA e a FESTA-TEXTO ("Show me \"cat\"!" / "Yes! \"Cat\"!") saem
- *    por síntese en-US — por isso `useRodada` recebe `idioma: "en-US"`.
+ *  - a PERGUNTA e a FESTA-TEXTO são SÓ A PALAVRA-ALVO (ex.: `"Cat!"`, nunca
+ *    uma frase carregadora tipo "Show me cat!" — ver o porquê no cabeçalho
+ *    de `ingles.ts`) e saem por síntese en-US — por isso `useRodada` recebe
+ *    `idioma: "en-US"`.
  *  - a comemoração do acerto toca a voz JÁ GRAVADA de festa de algum
  *    familiar (`personagem.vozFesta`) quando existe — o MESMO áudio de
  *    sempre, nenhuma gravação nova por palavra. No baralho `familia` é a voz
- *    da própria pessoa reconhecida; nos outros três (que não têm pessoa
+ *    da própria pessoa reconhecida; nos outros quatro (que não têm pessoa
  *    associada) é a de qualquer familiar cadastrado que já tenha essa
  *    gravação — é o "áudio de sempre" do cabeçalho de `ingles.ts`, não uma
  *    escolha pedagógica por baralho. Como a `FilaDeFala` toca OU o áudio OU
@@ -50,17 +56,21 @@
  * DEGRADAÇÃO SEM CADASTRO: com nenhum personagem salvo,
  * `montarRodadaFamiliaIngles` devolve `null` e o baralho família some do
  * sorteio (cai para cotidiano se for escolhido por uma corrida rara com o
- * cadastro mudando em outra aba) — a tela dos outros três baralhos funciona
+ * cadastro mudando em outra aba) — a tela dos outros quatro baralhos funciona
  * igual, desde o primeiro uso. Ver `construirPasso`. Pela mesma razão, o
  * cartão "Família" só aparece em `<TelaEscolhaExercicio>` quando o elenco dá
  * (ver `palavrasFamiliaJogaveis`) — senão a criança escolheria um cartão que
  * não gera rodada nenhuma.
  *
- * REFORÇOS EM INGLÊS: `ingles.ts` não define `reforcos` (usa o padrão do
- * engine, em português) — como `useRodada` fala TUDO desta rodada em
- * en-US, um reforço em português sairia com sotaque errado. Por isso esta
- * tela fornece o próprio array em inglês (`REFORCOS_INGLES`), só texto,
- * nada de lógica nova.
+ * REFORÇO NO ERRO: `ingles.ts` não define `reforcos` (usa o padrão do
+ * engine, frases em português) — como `useRodada` fala TUDO desta rodada em
+ * en-US, um reforço em português sairia com sotaque errado. Mas nem uma
+ * frase em inglês ("Try again!") resolveria: mesma regra do topo do
+ * arquivo — a criança não entende a frase, só a palavra. Por isso o
+ * reforço do toque errado é a PRÓPRIA `passo.rodada.pergunta` (a palavra-
+ * alvo, ex.: `"Cat!"`) repetida, montada como array de 1 item logo abaixo —
+ * repetir o alvo é o reforço, não uma frase decorativa que a criança de 3
+ * anos não decodifica.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -80,12 +90,25 @@ import {
   type EstadoDificuldade,
   type Sorteio,
 } from "@/game/dificuldade";
-import type { EstadoRodada } from "@/game/engine";
+import type { EstadoRodada, FaseRodada } from "@/game/engine";
 import { filaDeFala } from "@/game/fala";
-import { peca } from "@/game/modos/cores";
+import {
+  comemorar,
+  contarObjeto,
+  jaContado,
+  repetirPergunta as repetirPerguntaContagem,
+  type EstadoContagem,
+  type FalaContagem,
+  type FaseContagem,
+} from "@/game/modos/contar";
+import { peca, type CorId } from "@/game/modos/cores";
 import {
   BARALHOS_INGLES,
+  corInglesPorId,
+  criarContagemNumeroIngles,
   criarSorteio,
+  IDS_COR_INGLES,
+  montarRodadaCoresIngles,
   montarRodadaCotidiano,
   montarRodadaFamiliaIngles,
   montarRodadaNumeros,
@@ -98,6 +121,7 @@ import {
   type IdNumero,
   type IdPalavraFamilia,
   type IdSaudacao,
+  type RodadaCoresIngles,
   type RodadaCotidiano,
   type RodadaFamiliaIngles,
   type RodadaNumeros,
@@ -113,13 +137,26 @@ import estilos from "./ingles.module.css";
 /** Cor das bolhas: neutra, igual às outras telas — a pista é o desenho. */
 const COR_BOTAO = "var(--color-mar-700)";
 
-/** Ver o porquê no cabeçalho do arquivo: `ingles.ts` não define reforços. */
-const REFORCOS_INGLES: readonly string[] = [
-  "Try again!",
-  "Almost! Look again!",
-  "Oops! One more try!",
-  "So close! Try again!",
-];
+/**
+ * Tempos da ETAPA DE CONTAGEM que segue o acerto de uma rodada do baralho
+ * `numeros` (ver `iniciarContagemNumeros`/`tocarContagem` em `Rodada`) —
+ * mesmo espírito de `MS_TOTAL`/`MS_PROXIMA` em `/jogo/contar`: um respiro
+ * para ouvir o total antes da comemoração, e outro antes da próxima rodada.
+ */
+const MS_TOTAL_CONTAGEM = 2200;
+const MS_PROXIMA_CONTAGEM = 1600;
+
+/**
+ * Tradução da fase da contagem (`@/game/modos/contar`) para a fase que o
+ * `<Palco>` entende — mesmo mapeamento de `/jogo/contar`: "contando" enquanto
+ * a criança ainda toca objetos, "acertou" no instante do total, "recompensa"
+ * na comemoração silenciosa (`festa: null`, ver `FALAS_CONTAGEM_NUMEROS_INGLES`
+ * em `ingles.ts`). Só serve para reaproveitar o MESMO `<Palco>` da rodada,
+ * sem inventar uma fase nova nele.
+ */
+function faseDaContagem(fase: FaseContagem): FaseRodada {
+  return fase === "contando" ? "perguntando" : fase === "total" ? "acertou" : "recompensa";
+}
 
 export default function PaginaIngles() {
   // `key`: a semente muda uma vez, logo depois de hidratar (ver useSemente) —
@@ -136,15 +173,23 @@ interface Anteriores {
   cotidiano: string | null;
   familia: IdPalavraFamilia | null;
   saudacoes: IdSaudacao | null;
+  cores: CorId | null;
 }
 
-const SEM_ANTERIORES: Anteriores = { numeros: null, cotidiano: null, familia: null, saudacoes: null };
+const SEM_ANTERIORES: Anteriores = {
+  numeros: null,
+  cotidiano: null,
+  familia: null,
+  saudacoes: null,
+  cores: null,
+};
 
 type Passo =
   | { n: number; baralho: "numeros"; anteriores: Anteriores; rodada: RodadaNumeros }
   | { n: number; baralho: "cotidiano"; anteriores: Anteriores; rodada: RodadaCotidiano }
   | { n: number; baralho: "familia"; anteriores: Anteriores; rodada: RodadaFamiliaIngles<Pessoa> }
-  | { n: number; baralho: "saudacoes"; anteriores: Anteriores; rodada: RodadaSaudacoes };
+  | { n: number; baralho: "saudacoes"; anteriores: Anteriores; rodada: RodadaSaudacoes }
+  | { n: number; baralho: "cores"; anteriores: Anteriores; rodada: RodadaCoresIngles };
 
 /**
  * Escolhe o próximo baralho (nunca repete o `anterior.baralho`, a menos que
@@ -189,6 +234,10 @@ function construirPasso(
     case "saudacoes": {
       const rodada = montarRodadaSaudacoes({ qtd, anterior: anteriores.saudacoes, sortear });
       return { n, baralho, rodada, anteriores: { ...anteriores, saudacoes: rodada.correta } };
+    }
+    case "cores": {
+      const rodada = montarRodadaCoresIngles({ qtd, anterior: anteriores.cores, sortear });
+      return { n, baralho, rodada, anteriores: { ...anteriores, cores: rodada.correta } };
     }
     case "familia": {
       const rodada = montarRodadaFamiliaIngles({ fichas: elenco, qtd, anterior: anteriores.familia, sortear });
@@ -236,6 +285,8 @@ function palavraAlvo(passo: Passo): string {
       return palavraCotidianoPorId(passo.rodada.correta).palavra;
     case "saudacoes":
       return saudacaoPorId(passo.rodada.correta).palavra;
+    case "cores":
+      return corInglesPorId(passo.rodada.correta).palavra;
     case "familia":
       return passo.rodada.palavra.palavra;
   }
@@ -255,6 +306,8 @@ function rotuloAlternativa(passo: Passo, id: string): string {
       return palavraCotidianoPorId(id).palavra;
     case "saudacoes":
       return saudacaoPorId(id).palavra;
+    case "cores":
+      return corInglesPorId(id).palavra;
     case "familia": {
       const pessoa = passo.rodada.pessoas.find((p) => p.id === id);
       return pessoa?.nome?.trim() || "family";
@@ -264,7 +317,7 @@ function rotuloAlternativa(passo: Passo, id: string): string {
 
 /**
  * Qual `Blob` de festa tocar. No baralho `familia`, a voz da PRÓPRIA pessoa
- * reconhecida; nos outros três, a de qualquer familiar cadastrado que já
+ * reconhecida; nos outros quatro, a de qualquer familiar cadastrado que já
  * tenha essa gravação — "o mesmo áudio de sempre", como documenta o
  * cabeçalho de `ingles.ts`. `null` = sem gravação disponível, a festa-texto
  * (já em inglês) cai para TTS sozinha.
@@ -288,6 +341,7 @@ const ESCOLHAS_VALIDAS: ReadonlySet<string> = new Set<EscolhaIngles>([
   "cotidiano",
   "familia",
   "saudacoes",
+  "cores",
 ]);
 
 /**
@@ -451,7 +505,9 @@ function Rodada({
       alternativas: passo.rodada.alternativas,
       correta: passo.rodada.correta,
       festa: passo.rodada.festa,
-      reforcos: REFORCOS_INGLES,
+      // Reforço do toque errado: repete a palavra-alvo (ver cabeçalho do
+      // arquivo) — mesmo texto de `pergunta`, já formatado como "Palavra!".
+      reforcos: [passo.rodada.pergunta],
     }),
     [passo],
   );
@@ -478,27 +534,143 @@ function Rodada({
   }, [vozFesta, passo]);
 
   const encerrarSessao = sessao.encerrar;
+
+  // ------------------------------------------ etapa de contagem (números)
+  //
+  // Pedido do dono do produto: depois de acertar uma rodada do baralho
+  // `numeros`, a criança toca e conta os objetos em inglês ("one... two...
+  // three…") antes da próxima rodada — ver `criarContagemNumeroIngles` em
+  // `ingles.ts`, que reaproveita a MESMA máquina de `@/game/modos/contar`
+  // (mesma regra de ouro: não existe perder, toque repetido não fala de
+  // novo). `contagem === null` fora dessa etapa; `contagemRef` é a fonte de
+  // verdade síncrona para os handlers (mesmo motivo de `estadoRef` dentro de
+  // `useRodada`: dois toques no mesmo tick precisam ver a contagem já
+  // atualizada antes do re-render).
+  const [contagem, setContagem] = useState<EstadoContagem | null>(null);
+  const contagemRef = useRef<EstadoContagem | null>(null);
+  const timersContagem = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const limparTimersContagem = useCallback(() => {
+    for (const t of timersContagem.current) clearTimeout(t);
+    timersContagem.current = [];
+  }, []);
+  const agendarContagem = useCallback((fn: () => void, ms: number) => {
+    timersContagem.current.push(setTimeout(fn, ms));
+  }, []);
+  // Saiu da tela com uma contagem em andamento: nada continua agendado
+  // (mesmo cuidado de `/jogo/contar`). `filaDeFala.cancelar()` já é feito
+  // pelo próprio unmount de `useRodada`, que compartilha a mesma fila.
+  useEffect(
+    () => () => {
+      limparTimersContagem();
+    },
+    [limparTimersContagem],
+  );
+
+  const dizerContagem = useCallback((falas: readonly FalaContagem[]) => {
+    for (const f of falas) {
+      filaDeFala.falar({ chave: f.chave, texto: f.texto, prioridade: f.prioridade, idioma: "en-US" });
+    }
+  }, []);
+
+  // "Ir para a próxima rodada" — extraído para ser chamado tanto no fim
+  // normal de uma rodada (baralhos != números) quanto no fim da contagem.
+  const avancarProximaRodada = useCallback(() => {
+    setPasso((atual) =>
+      montarPassoParaEscolha(
+        escolha,
+        atual,
+        atual.n + 1,
+        elencoRef.current,
+        criarSorteio(semente + (atual.n + 1) * 7919),
+        dificuldade.current.alternativas,
+      ),
+    );
+  }, [escolha, semente, elencoRef]);
+
+  const iniciarContagemNumeros = useCallback(
+    (concluido: Extract<Passo, { baralho: "numeros" }>) => {
+      // Semente derivada, DIFERENTE da usada para montar a PRÓXIMA rodada
+      // (`semente + (n+1)*7919`, em `avancarProximaRodada`) — só decide o
+      // giro de cada peixinho, sem interferir no sorteio do resto do jogo.
+      const sortear = criarSorteio(semente + concluido.n * 7919 + 1);
+      const novo = criarContagemNumeroIngles(concluido.rodada.correta, sortear, concluido.rodada.pergunta);
+      contagemRef.current = novo;
+      setContagem(novo);
+    },
+    [semente],
+  );
+
+  const tocarContagem = useCallback(
+    (id: string) => {
+      const atual = contagemRef.current;
+      if (!atual) return;
+      const t = contarObjeto(atual, id);
+      // `mudou: false` = objeto já contado (ou fase errada) — regra de ouro
+      // "não existe perder", igual a `/jogo/contar`: nada acontece.
+      if (!t.mudou) return;
+      contagemRef.current = t.estado;
+      setContagem(t.estado);
+      dizerContagem(t.falas);
+      if (t.estado.fase !== "total") return;
+
+      agendarContagem(() => {
+        const depoisDoTotal = contagemRef.current;
+        if (!depoisDoTotal) return;
+        const festa = comemorar(depoisDoTotal);
+        if (!festa.mudou) return;
+        contagemRef.current = festa.estado;
+        setContagem(festa.estado);
+        // `festa.falas` é sempre `[]` aqui (`FALAS_CONTAGEM_NUMEROS_INGLES.
+        // festa === null`, ver `ingles.ts`): a comemoração já aconteceu no
+        // acerto do número. Chamamos `dizerContagem` do mesmo jeito, para o
+        // comportamento continuar certo mesmo se isso mudar um dia.
+        dizerContagem(festa.falas);
+
+        agendarContagem(() => {
+          // Ponto seguro (ver `useSessao`): só aqui, com a contagem já
+          // comemorada por inteiro, a despedida pode encerrar a sessão —
+          // nunca no meio da contagem.
+          contagemRef.current = null;
+          setContagem(null);
+          if (encerrarSessao()) return;
+          avancarProximaRodada();
+        }, MS_PROXIMA_CONTAGEM);
+      }, MS_TOTAL_CONTAGEM);
+    },
+    [agendarContagem, dizerContagem, encerrarSessao, avancarProximaRodada],
+  );
+
+  const repetirContagem = useCallback(() => {
+    const atual = contagemRef.current;
+    if (!atual) return;
+    dizerContagem(repetirPerguntaContagem(atual).falas);
+  }, [dizerContagem]);
+
   const aoRecompensar = useCallback(
     (estadoFinal: EstadoRodada) => {
       dificuldade.current = registrarRodada(dificuldade.current, { quaseLas: estadoFinal.quaseLas });
-      // Figurinha da palavra aprendida. Sem banco (aba anônima, quota cheia)
-      // o jogo continua igual — recompensa é bônus, não requisito.
+      // Figurinha da palavra aprendida — UMA vez por rodada, aqui. A etapa
+      // de contagem que pode seguir (baralho `numeros`, abaixo) é só reforço
+      // de vocabulário: NUNCA concede figurinha nem acerto de novo no eixo
+      // `ingles`. Sem banco (aba anônima, quota cheia) o jogo continua igual
+      // — recompensa é bônus, não requisito.
       void addFigurinha(idFigurinha("ingles", idPalavraDoPasso(passo)), "ingles").catch(() => {});
+
+      if (passo.baralho === "numeros") {
+        // O fim de sessão seguro acontece DEPOIS da contagem inteira (dentro
+        // de `tocarContagem`) — nunca aqui, senão a despedida cortaria a
+        // contagem no meio (regra do brief).
+        iniciarContagemNumeros(passo);
+        return;
+      }
+
       // Fim da sessão só no fim da rodada: o tempo pode ter acabado no meio
       // dela, mas a comemoração da criança nunca é cortada.
       if (encerrarSessao()) return;
-      setPasso((atual) =>
-        montarPassoParaEscolha(
-          escolha,
-          atual,
-          atual.n + 1,
-          elencoRef.current,
-          criarSorteio(semente + (atual.n + 1) * 7919),
-          dificuldade.current.alternativas,
-        ),
-      );
+      avancarProximaRodada();
     },
-    [encerrarSessao, passo, semente, escolha, elencoRef],
+    [passo, encerrarSessao, avancarProximaRodada, iniciarContagemNumeros],
   );
 
   const { estado, tocar, repetir, falando } = useRodada(config, {
@@ -517,31 +689,86 @@ function Rodada({
       ? "Almost! Look again!"
       : null;
 
+  // Etapa de contagem ativa (baralho `numeros`, pós-acerto): troca a
+  // pergunta/fase/feedback/repetir e as alternativas do MESMO <Palco> pelos
+  // objetos de tocar-e-contar — nenhuma navegação, nenhum remount. A fase da
+  // RODADA (`estado.fase`) continua "recompensa" o tempo todo (só muda de
+  // verdade quando `avancarProximaRodada` monta a rodada seguinte), então
+  // "Trocar" abaixo já fica travado sozinho durante toda a contagem.
+  const perguntaAtual = contagem ? contagem.pergunta : estado.pergunta;
+  const faseAtual: FaseRodada = contagem ? faseDaContagem(contagem.fase) : estado.fase;
+  const aoRepetirAtual = contagem ? repetirContagem : repetir;
+  const feedbackAtual = contagem ? (
+    <>
+      <ul
+        className={estilosObjetos.pontos}
+        aria-label={`${contagem.contados.length} of ${contagem.objetos.length} counted`}
+      >
+        {contagem.objetos.map((objeto, i) => (
+          <li
+            key={objeto.id}
+            className={estilosObjetos.ponto}
+            data-cheio={i < contagem.contados.length ? "true" : "false"}
+          />
+        ))}
+      </ul>
+      {contagem.fase !== "contando" && contagem.falas.total ? (
+        // `falas.total` é `null` no pacote do inglês (ver `ingles.ts`): o
+        // último número contado já É o total, então não existe frase extra
+        // para mostrar aqui — nem em voz (já corrigido em `contar.ts`), nem
+        // por escrito, senão a tela ecoa o que o áudio parou de ecoar.
+        <span>{contagem.falas.total(contagem.objetos.length, contagem.forma)}</span>
+      ) : null}
+    </>
+  ) : (
+    feedback
+  );
+
   return (
     <>
-      <Palco pergunta={estado.pergunta} fase={estado.fase} aoRepetir={repetir} falando={falando} feedback={feedback}>
-        {estado.alternativas.map((id) => {
-          const certa = estado.escolhida === id;
-          const errada = estado.fase === "quaseLa" && estado.ultimaQuase === id;
-          return (
-            <BotaoAlternativa
-              key={id}
-              cor={COR_BOTAO}
-              rotulo={rotuloAlternativa(passo, id)}
-              travado={estado.fase !== "perguntando"}
-              acertou={certa}
-              aoTocar={() => tocar(id)}
-            >
-              <ConteudoAlternativa passo={passo} id={id} certa={certa} errada={errada} />
-            </BotaoAlternativa>
-          );
-        })}
+      <Palco pergunta={perguntaAtual} fase={faseAtual} aoRepetir={aoRepetirAtual} falando={falando} feedback={feedbackAtual}>
+        {contagem
+          ? contagem.objetos.map((objeto, i) => {
+              const contado = jaContado(contagem, objeto.id);
+              return (
+                <BotaoAlternativa
+                  key={objeto.id}
+                  cor={COR_BOTAO}
+                  rotulo={`fish ${i + 1}${contado ? " (counted)" : ""}`}
+                  travado={contagem.fase !== "contando"}
+                  acertou={contagem.fase !== "contando"}
+                  aoTocar={() => tocarContagem(objeto.id)}
+                >
+                  <span className={[estilosObjetos.peca, contado ? estilosObjetos.contado : ""].join(" ").trim()}>
+                    <ObjetoMar forma={objeto.forma} cor={objeto.cor} giro={objeto.giro} />
+                  </span>
+                </BotaoAlternativa>
+              );
+            })
+          : estado.alternativas.map((id) => {
+              const certa = estado.escolhida === id;
+              const errada = estado.fase === "quaseLa" && estado.ultimaQuase === id;
+              return (
+                <BotaoAlternativa
+                  key={id}
+                  cor={COR_BOTAO}
+                  rotulo={rotuloAlternativa(passo, id)}
+                  travado={estado.fase !== "perguntando"}
+                  acertou={certa}
+                  aoTocar={() => tocar(id)}
+                >
+                  <ConteudoAlternativa passo={passo} id={id} certa={certa} errada={errada} />
+                </BotaoAlternativa>
+              );
+            })}
       </Palco>
       <BotaoVoltar />
       {/* "Trocar" só ativo perguntando: trocar durante "quaseLa"/comemoração
-          cortaria a tentativa ou a festa no meio (regra do brief). Canto
-          inferior direito: longe do voltar (inferior esquerdo, 88px) e do
-          `<AvisoVoz>` (empilhado sobre o voltar). */}
+          cortaria a tentativa ou a festa no meio (regra do brief) — e, pelo
+          MESMO motivo, fica travado sozinho durante toda a etapa de
+          contagem que segue um acerto de números (ver comentário acima).
+          Canto inferior direito: longe do voltar (inferior esquerdo, 88px) e
+          do `<AvisoVoz>` (empilhado sobre o voltar). */}
       <button
         type="button"
         className={estilos.trocar}
@@ -600,7 +827,16 @@ const OPCAO_NUMEROS: OpcaoEscolha = {
   rotulo: "Números",
   cor: "var(--color-agua)",
   icone: (
-    // Contagem visual — no espírito do modo Contar: nunca um numeral escrito.
+    // Ícone do CARTÃO DE ESCOLHA (não uma alternativa de rodada) — 4
+    // peixinhos fixos, sem algarismo, porque não existe um "número certo"
+    // aqui para escrever ao lado. DECISÃO SOBRE NUMERAL REVERTIDA (só para
+    // as alternativas de verdade, ver `ConteudoAlternativa`/`.algarismo` em
+    // ingles.module.css): este comentário dizia "no espírito do modo
+    // Contar: nunca um numeral escrito" — o dono do projeto pediu
+    // EXPLICITAMENTE que o algarismo apareça junto da quantidade dentro da
+    // rodada de números, para a criança ligar quantidade + símbolo + palavra
+    // ouvida ao mesmo tempo. Esse pedido não muda este ícone (não há valor
+    // a escrever aqui), só as alternativas reais do baralho.
     <span className={estilos.iconeContagem} aria-hidden="true">
       {[0, 1, 2, 3].map((i) => (
         <ObjetoMar key={i} forma="peixe" cor="var(--color-mar-900)" className={estilos.pontoIcone} />
@@ -628,6 +864,22 @@ const OPCAO_SAUDACOES: OpcaoEscolha = {
   rotulo: "Saudações",
   cor: "var(--color-areia)",
   icone: <Saudacao qual="hello" tamanho={TAMANHO_ICONE_ESCOLHA} className={estilos.iconeQuadrado} />,
+};
+
+const OPCAO_CORES: OpcaoEscolha = {
+  id: "cores",
+  rotulo: "Cores",
+  cor: "var(--color-mar-500)",
+  icone: (
+    // A MESMA forma em cores diferentes — o desenho do próprio cartão já
+    // ensaia a exceção documentada no cabeçalho de `ingles.ts`: neste
+    // baralho a COR é a pista (não a forma, como no resto do jogo).
+    <span className={estilos.iconeCores} aria-hidden="true">
+      {IDS_COR_INGLES.map((id) => (
+        <ObjetoMar key={id} forma="bolha" cor={peca(id).hex} className={estilos.pontoIcone} />
+      ))}
+    </span>
+  ),
 };
 
 /** Só chamada quando `podeFamilia` é `true` — sempre acha um representante. */
@@ -683,6 +935,7 @@ function TelaEscolhaExercicio({
     OPCAO_PALAVRAS,
     ...(representante ? [opcaoFamilia(representante)] : []),
     OPCAO_SAUDACOES,
+    OPCAO_CORES,
   ];
 
   return (
@@ -727,7 +980,7 @@ function IconeTrocar() {
 
 /**
  * O que desenhar dentro de uma alternativa, por baralho. `familia` usa a
- * animação própria do `<Personagem>` (pulo/careta); os outros três reaproveitam
+ * animação própria do `<Personagem>` (pulo/careta); os outros quatro reaproveitam
  * o wrapper `.peca`/`.sumindo`/`.tremendo` de `objetos.module.css`, o mesmo
  * usado por "cores" e "contar" — nenhuma animação nova.
  */
@@ -764,15 +1017,27 @@ function ConteudoAlternativa({
     const item = numeroPorId(id);
     return (
       <span className={classeAnimada}>
-        <span className={estilos.contagem} aria-hidden="true">
-          {Array.from({ length: item.valor }, (_, i) => (
-            <ObjetoMar
-              key={i}
-              forma="peixe"
-              cor="var(--color-agua)"
-              className={estilos.pontoContagem}
-            />
-          ))}
+        {/* Algarismo + quantidade desenhada JUNTOS — pedido explícito do
+         * dono do projeto (ver `.algarismo` em ingles.module.css): a
+         * criança liga três coisas de uma vez — a quantidade que vê, o
+         * símbolo escrito (`item.id`, ex.: "8") e a palavra que ouve
+         * (`Eight!`). O algarismo é `aria-hidden`: o rótulo acessível já
+         * vem de `rotulo` no <BotaoAlternativa> (a palavra em inglês), não
+         * duplicar aqui. */}
+        <span className={estilos.numeroConteudo}>
+          <span className={estilos.algarismo} aria-hidden="true">
+            {item.id}
+          </span>
+          <span className={estilos.contagem} aria-hidden="true">
+            {Array.from({ length: item.valor }, (_, i) => (
+              <ObjetoMar
+                key={i}
+                forma="peixe"
+                cor="var(--color-agua)"
+                className={estilos.pontoContagem}
+              />
+            ))}
+          </span>
         </span>
       </span>
     );
@@ -787,6 +1052,18 @@ function ConteudoAlternativa({
         ) : (
           <ObjetoMar forma={item.desenho.forma} cor={peca(item.desenho.cor).hex} />
         )}
+      </span>
+    );
+  }
+
+  if (passo.baralho === "cores") {
+    // A MESMA forma (`passo.rodada.forma`, sorteada uma vez para a rodada
+    // inteira) em todas as alternativas — só a cor muda. Ver a exceção
+    // documentada no cabeçalho de `ingles.ts`: aqui a cor é a única pista,
+    // de propósito.
+    return (
+      <span className={classeAnimada}>
+        <ObjetoMar forma={passo.rodada.forma} cor={peca(id).hex} />
       </span>
     );
   }

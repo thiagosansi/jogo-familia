@@ -17,7 +17,7 @@
  * decide qual `Blob` tocar é a página, olhando para `personagem.vozFesta`
  * (ou caindo para TTS) — este módulo só devolve texto.
  *
- * QUATRO BARALHOS
+ * CINCO BARALHOS
  * ----------------
  *  1. `numeros`    — contar de 1 a 10; a rodada sorteia um SUBCONJUNTO do
  *                     pool (10 é mais do que a criança aguenta de uma vez).
@@ -31,6 +31,9 @@
  *                     agente); o catálogo já referencia o `id` que a tela vai
  *                     usar para achar o desenho certo, mas não IMPORTA nada
  *                     de ilustração — os testes rodam sem ela existir.
+ *  5. `cores`       — red/blue/yellow/green/purple. EXCEÇÃO INTENCIONAL à
+ *                     regra "o inglês nunca chega sozinho" logo acima — ver
+ *                     bloco dedicado antes de `montarRodadaCoresIngles`.
  *
  * LIMITAÇÃO CONHECIDA (família): `Personagem.papel` não guarda gênero — só
  * existe o papel `"irmao"` para irmãos/irmãs, sem distinguir menino de
@@ -50,20 +53,35 @@
 
 import { embaralhar, montarAlternativas, type Sorteio } from "../dificuldade.ts";
 import { IDS_ANIMAIS, type IdAnimal } from "./animais.ts";
-import { CORES, IDS_FORMA, type CorId, type FormaObjeto } from "./cores.ts";
+import { criarContagem, type EstadoContagem, type FalasContagem } from "./contar.ts";
+import { CORES, IDS_COR, IDS_FORMA, peca, type CorId, type FormaObjeto } from "./cores.ts";
 import type { Papel, Personagem } from "../../lib/tipos.ts";
 
 // ------------------------------------------------------------ falas comuns
 
-/** "Show me X!" — mesma pergunta de toque nos quatro baralhos (simples e sem
- * depender de concordância de artigo/gênero do inglês). */
+/**
+ * SÓ A PALAVRA — pedido explícito do dono do produto: "no inglês é melhor
+ * mostrar e falar apenas o que se quer [ensinar]". Uma frase carregadora
+ * ("Show me X!") é ruído para quem ainda está adquirindo o vocabulário: a
+ * criança não entende "show me", só a palavra-alvo é o item lexical que ela
+ * precisa associar ao desenho na tela. Por isso a pergunta falada/exibida
+ * nos quatro baralhos é só `"${Palavra}!"` — nunca uma frase em volta.
+ */
 function perguntaDaPalavra(palavra: string): string {
-  return `Show me "${palavra}"!`;
+  return `${maiuscula(palavra)}!`;
 }
 
-/** Comemoração-texto (fallback do TTS quando não há voz gravada tocando). */
+/**
+ * Comemoração-texto (fallback do TTS quando não há voz gravada tocando):
+ * mesma regra da pergunta, só a palavra — repetir o vocabulário-alvo no
+ * acerto reforça a associação som↔desenho; uma frase decorativa ("Yes!")
+ * não ensina nada novo. O resultado é IGUAL ao de `perguntaDaPalavra` de
+ * propósito: `useRodada` separa a chave de dedupe da fila de fala por
+ * `motivo` (pergunta vs. festa), então o mesmo texto toca duas vezes sem
+ * ser engolido pela deduplicação.
+ */
 function festaDaPalavra(palavra: string): string {
-  return `Yes! "${maiuscula(palavra)}"!`;
+  return perguntaDaPalavra(palavra);
 }
 
 function maiuscula(texto: string): string {
@@ -75,13 +93,14 @@ function clampQtd(n: number): 2 | 3 | 4 {
   return Math.min(4, Math.max(2, Math.round(n))) as 2 | 3 | 4;
 }
 
-export type BaralhoIngles = "numeros" | "cotidiano" | "familia" | "saudacoes";
+export type BaralhoIngles = "numeros" | "cotidiano" | "familia" | "saudacoes" | "cores";
 
 export const BARALHOS_INGLES: readonly { readonly id: BaralhoIngles; readonly titulo: string }[] = [
   { id: "numeros", titulo: "Numbers" },
   { id: "cotidiano", titulo: "Everyday words" },
   { id: "familia", titulo: "Family" },
   { id: "saudacoes", titulo: "Hello & bye" },
+  { id: "cores", titulo: "Colors" },
 ];
 
 // ============================================================= 1. números
@@ -173,6 +192,60 @@ export function montarRodadaNumeros({
     correta: alvo,
     itens: alternativas.map((id) => numeroPorId(id)),
   };
+}
+
+// ------------------------------------------- 1b. contagem pós-acerto (números)
+
+/**
+ * PEDIDO DO DONO DO PRODUTO: depois de acertar um número, a criança toca e
+ * conta os objetos EM INGLÊS antes da próxima rodada ("one... two... three…").
+ * Em vez de duplicar as regras de "não conta duas vezes"/"ordem
+ * livre"/"não existe perder" (as partes difíceis de acertar), reaproveitamos
+ * a MESMA máquina de estados do modo Contar (`@/game/modos/contar`, ver o
+ * cabeçalho de lá) passando este pacote de falas.
+ *
+ * `festa: null` — a comemoração do acerto já aconteceu ANTES desta etapa
+ * (voz gravada da família, ou TTS da palavra-alvo — ver `aoAcertar` em
+ * `/jogo/ingles/page.tsx`): repetir aqui seria ruído, não reforço.
+ */
+export const FALAS_CONTAGEM_NUMEROS_INGLES: FalasContagem = {
+  numeros: NUMEROS_INGLES.map((n) => n.palavra),
+  // `null`, e não `perguntaDaPalavra(...)`: em pt-BR o total é uma frase
+  // NOVA ("São nove peixinhos!"), então falar depois do último número
+  // reforça a contagem. Em inglês a regra "SÓ A PALAVRA" (topo do arquivo)
+  // faz o total ser A MESMA palavra do último número, só capitalizada
+  // ("nine" -> "Nine!") — repetir isso vira eco ("nine, Nine!") para quem
+  // tem 3 anos, não reforço. O último número já dito É o total.
+  total: null,
+  festa: null,
+};
+
+/**
+ * Monta a etapa de contagem do número `idAlvo` (ex.: "8" -> 8 peixinhos para
+ * tocar, contando em inglês).
+ *
+ * `forma` fixa em "peixe": é a MESMA silhueta que já ilustra a quantidade
+ * dentro da própria alternativa de números (ver `ConteudoAlternativa` em
+ * `/jogo/ingles/page.tsx`) — o peixinho que a criança viu na alternativa é o
+ * mesmo que ela toca na contagem, sem uma forma nova para reconhecer no meio
+ * do reforço. `maximo: 10` é o teto do baralho de números (o modo Contar em
+ * pt-BR continua limitado a 5 — ver `MAX_CONTAGEM` em `contar.ts`, intocado).
+ * `pergunta`, quando informada, é só o texto mostrado no `<Palco>` durante a
+ * contagem — a página decide se fala esse texto ou não.
+ */
+export function criarContagemNumeroIngles(
+  idAlvo: IdNumero,
+  sortear: Sorteio = Math.random,
+  pergunta?: string,
+): EstadoContagem {
+  return criarContagem({
+    quantidade: numeroPorId(idAlvo).valor,
+    forma: "peixe",
+    maximo: 10,
+    falas: FALAS_CONTAGEM_NUMEROS_INGLES,
+    sortear,
+    pergunta,
+  });
 }
 
 // =========================================================== 2. cotidiano
@@ -476,6 +549,121 @@ export function montarRodadaSaudacoes({
   };
 }
 
+// =============================================================== 5. cores
+
+/**
+ * EXCEÇÃO INTENCIONAL E RESTRITA A ESTE BARALHO — não "consertar" depois.
+ *
+ * `cores.ts` tem uma regra forte, correta para o RESTO do jogo: cor nunca é a
+ * única pista (bijeção cor↔forma, ver o cabeçalho de lá) — uma criança
+ * daltônica resolve pela silhueta. Esse mesmo `cotidiano` acima reaproveita
+ * essa bijeção (uma forma, uma cor fixa por palavra).
+ *
+ * Só que este baralho ENSINA justamente o NOME da cor ("Blue!", sem frase de
+ * apoio — ver `perguntaDaPalavra`). Se cada cor sempre aparecesse com a
+ * "sua" forma exclusiva, a proteção do daltônico vira um atalho pedagógico
+ * pelas costas: a criança aprenderia a apontar para a concha ao ouvir
+ * "Blue!" sem nunca precisar reconhecer a COR — a forma sozinha já resolveria
+ * a rodada, e a palavra nova nunca seria testada de verdade.
+ *
+ * Por isso, e SÓ aqui, a rodada sorteia uma forma por rodada e desenha TODAS
+ * as alternativas com essa MESMA forma — a cor passa a ser a única variável
+ * possível, porque a cor É o conteúdo que está sendo ensinado. Para a forma
+ * sorteada não reabrir a mesma porta pela lateral (a criança reconhecendo a
+ * forma bijetada à cor certa e descartando as outras por eliminação de
+ * forma), `montarRodadaCoresIngles` exclui explicitamente a forma que
+ * `cores.ts` associa à cor-alvo — ver `formaDaRodada`, provado pelo teste
+ * "a forma da rodada nunca é a bijetada à cor correta" em `ingles.test.ts`.
+ */
+
+const PALAVRA_COR: Readonly<Record<CorId, string>> = {
+  vermelho: "red",
+  azul: "blue",
+  amarelo: "yellow",
+  verde: "green",
+  roxo: "purple",
+};
+
+export interface PalavraCor {
+  readonly id: CorId;
+  readonly palavra: string;
+}
+
+export const CORES_INGLES: readonly PalavraCor[] = IDS_COR.map(
+  (id): PalavraCor => ({ id, palavra: PALAVRA_COR[id] }),
+);
+
+export const IDS_COR_INGLES: readonly CorId[] = CORES_INGLES.map((c) => c.id);
+
+const COR_INGLES_POR_ID = new Map<string, PalavraCor>(CORES_INGLES.map((c) => [c.id, c]));
+
+export function corInglesPorId(id: string): PalavraCor {
+  const achada = COR_INGLES_POR_ID.get(id);
+  if (!achada) throw new Error(`Cor desconhecida no baralho de cores (inglês): ${id}`);
+  return achada;
+}
+
+export function proximaCorIngles(anterior: CorId | null | undefined, sortear: Sorteio = Math.random): CorId {
+  const candidatos = IDS_COR_INGLES.filter((id) => id !== anterior);
+  const pool = candidatos.length > 0 ? candidatos : IDS_COR_INGLES;
+  return embaralhar(pool, sortear)[0];
+}
+
+/**
+ * A forma desta rodada: qualquer uma do catálogo de `cores.ts`, MENOS a que
+ * a bijeção associa à cor-alvo (ver bloco acima — é essa exclusão que
+ * impede a forma de virar um segundo atalho para a resposta).
+ */
+function formaDaRodada(alvo: CorId, sortear: Sorteio): FormaObjeto {
+  const formaDaCorAlvo = peca(alvo).forma;
+  const formasPossiveis = IDS_FORMA.filter((f) => f !== formaDaCorAlvo);
+  return embaralhar(formasPossiveis, sortear)[0];
+}
+
+export interface RodadaCoresIngles {
+  readonly pergunta: string;
+  readonly festa: string;
+  readonly alternativas: readonly CorId[];
+  readonly correta: CorId;
+  /** A MESMA forma para todas as alternativas desta rodada — ver exceção
+   * documentada acima: aqui a cor é a única pista, de propósito. */
+  readonly forma: FormaObjeto;
+  readonly itens: readonly PalavraCor[];
+}
+
+export interface OpcoesRodadaCoresIngles {
+  qtd: number;
+  correta?: CorId;
+  anterior?: CorId | null;
+  sortear?: Sorteio;
+}
+
+export function montarRodadaCoresIngles({
+  qtd,
+  correta,
+  anterior = null,
+  sortear = Math.random,
+}: OpcoesRodadaCoresIngles): RodadaCoresIngles {
+  const alvo = correta ?? proximaCorIngles(anterior, sortear);
+  const alternativas = montarAlternativas(IDS_COR_INGLES, alvo, clampQtd(qtd), sortear) as CorId[];
+
+  // Rede de segurança (mesmo espírito de cores.ts/cotidiano): o pool já
+  // garante ids únicos, mas se alguém duplicar uma cor no catálogo a rodada
+  // morre aqui, não na frente da criança — nunca duas alternativas da mesma cor.
+  if (new Set(alternativas).size !== alternativas.length) {
+    throw new Error("Rodada de cores (inglês) com duas alternativas da mesma cor.");
+  }
+
+  return {
+    pergunta: perguntaDaPalavra(corInglesPorId(alvo).palavra),
+    festa: festaDaPalavra(corInglesPorId(alvo).palavra),
+    alternativas,
+    correta: alvo,
+    forma: formaDaRodada(alvo, sortear),
+    itens: alternativas.map((id) => corInglesPorId(id)),
+  };
+}
+
 // ------------------------------------------------------------ invariantes
 
 /**
@@ -519,6 +707,21 @@ export function validarCatalogoIngles(): true {
   validarPalavrasUnicas("saudacoes", SAUDACOES_INGLES);
   if (SAUDACOES_INGLES.length < 2) {
     throw new Error("Baralho de saudações precisa de pelo menos 2 itens para formar uma rodada.");
+  }
+
+  validarIdsUnicos("cores", CORES_INGLES);
+  validarPalavrasUnicas("cores", CORES_INGLES);
+  if (CORES_INGLES.length !== CORES.length) {
+    throw new Error("Baralho de cores (inglês) precisa ter exatamente uma palavra por cor de cores.ts.");
+  }
+  const idsCorValidos = new Set<string>(IDS_COR);
+  for (const c of CORES_INGLES) {
+    if (!idsCorValidos.has(c.id)) throw new Error(`Cores (inglês) referencia cor inexistente em cores.ts: ${c.id}`);
+  }
+  // Precisa sobrar pelo menos uma forma depois de excluir a bijetada à cor
+  // alvo (ver `formaDaRodada`) — senão a rodada nunca conseguiria sortear.
+  if (IDS_FORMA.length < 2) {
+    throw new Error("Catálogo de formas pequeno demais para excluir a forma bijetada à cor-alvo em cores.");
   }
 
   return true;

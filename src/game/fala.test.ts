@@ -4,34 +4,47 @@
  *
  *   node --test --experimental-strip-types src/game/fala.test.ts
  *
- * O Chrome/macOS trava o motor de TTS inteiro (`speechSynthesis.speak()`
- * aceita, `speaking` vira `true`, mas `onstart` nunca dispara — ver a
- * knowledge "Sem audio no desktop"). `AmbienteFala` é a seam que deixa isso
- * reproduzível sem `window`: simulamos `SpeechSynthesis`/
+ * O Chrome/macOS pode travar o motor de TTS inteiro: `speechSynthesis.speak()`
+ * aceita, mas nem `onstart` nem `onend` disparam NUNCA — ver a medição real
+ * no comentário de `desistir()` em `fala.ts` (`speaking: true` parado para
+ * sempre, sem `cancel()`/`pause()`/`resume()` recuperar). `AmbienteFala` é a
+ * seam que deixa isso reproduzível sem `window`: simulamos `SpeechSynthesis`/
  * `SpeechSynthesisUtterance` com objetos simples e controlamos exatamente
  * quando (e se) `onstart`/`onend`/`onerror` disparam.
  *
+ * NÃO HÁ RETRY. Já existiu uma versão com retry único (cancelar + `speak()`
+ * de novo quando `onstart` não chegava a tempo) — foi removida porque o
+ * motor travado do Chrome/macOS não se recupera com `cancel()` + novo
+ * `speak()`, então o retry só produzia fala dupla (a causa raiz da última
+ * palavra da contagem em inglês saindo repetida). A detecção agora depende
+ * só do `timerLimite` (rede de segurança dimensionada pelo tamanho do
+ * texto, até 12s): se ele estourar sem `onstart` nem `onend` terem
+ * disparado, o motor travou de verdade.
+ *
  * Cobre:
- *  1. `start` nunca dispara -> retry único -> 2ª tentativa também trava ->
- *     saúde vira indisponível, Promise resolve sem lançar (DoD 1 e 3);
- *  2. `start` dispara normalmente -> sem retry, saúde continua disponível
- *     (DoD 1 e 4);
- *  3. 1ª tentativa trava mas a 2ª (retry) recupera -> nunca marca indisponível;
- *  4. `not-allowed` é falta de gesto, não travamento -> não marca indisponível;
+ *  1. nem `onstart` nem `onend` disparam -> `timerLimite` estoura -> saúde
+ *     vira indisponível, uma tentativa só, Promise resolve sem lançar
+ *     (DoD 1 e 2);
+ *  2. `onstart` dispara normalmente -> saúde continua disponível (DoD 1 e 4);
+ *  3. motor saudável que NUNCA dispara `onstart` mas dispara `onend`: saúde
+ *     continua disponível e a fala sai UMA vez só (DoD 3) — prova que
+ *     `speaking`/ausência de `onstart` não é usada como sinal de travamento;
+ *  4. `not-allowed` é falta de gesto, não travamento -> não marca
+ *     indisponível (DoD 4);
  *  5. fala que já iniciou não é confundida com travamento mesmo com `onend`
  *     atrasado;
- *  6. `timerLimite` (rede de segurança do `onend` perdido) cancela a síntese
- *     real antes de resolver, sem marcar a voz indisponível (achado 1);
- *  7. voz remota lenta (onstart depois da janela curta, mas dentro da janela
- *     alargada) não é confundida com motor travado (achado 2);
- *  8. `assinarSaudeDaVoz` notifica no ato da inscrição e a cada mudança real
- *     (DoD 2), e para de notificar depois de cancelada;
- *  9. idioma: `vozParaIdioma` (interno) escolhe a voz na ordem exata+local ->
+ *  6. `timerLimite` (rede de segurança do `onend` perdido, motor com
+ *     `onstart` mas sem `onend`) cancela a síntese real antes de resolver,
+ *     sem marcar a voz indisponível — a fala tinha começado, não é
+ *     travamento;
+ *  7. `assinarSaudeDaVoz` notifica no ato da inscrição e a cada mudança real,
+ *     e para de notificar depois de cancelada;
+ *  8. idioma: `vozParaIdioma` (interno) escolhe a voz na ordem exata+local ->
  *     exata -> prefixo -> `null`, e `fala.lang` sempre sai com o idioma
  *     pedido (padrão pt-BR quando omitido) — fundação do modo de inglês;
- *  10. dedupe entre idiomas: o mesmo texto em dois idiomas não é tratado como
- *      a mesma fala (a chave padrão da fila passa a incluir o idioma), mas o
- *      dedupe normal (mesmo texto, mesmo idioma) continua funcionando.
+ *  9. dedupe entre idiomas: o mesmo texto em dois idiomas não é tratado como
+ *     a mesma fala (a chave padrão da fila passa a incluir o idioma), mas o
+ *     dedupe normal (mesmo texto, mesmo idioma) continua funcionando.
  *
  * `vozIndisponivel` (em fala.ts) é estado de módulo — compartilhado por
  * todos os testes deste arquivo, que rodam no mesmo processo `node --test`.
@@ -56,8 +69,8 @@ import {
   type UtteranceFala,
 } from "./fala.ts";
 
-/** Bem menor que os 1500ms de produção — os testes não esperam de verdade. */
-const MS_ESPERA_INICIO_TESTE = 10;
+/** Unidade de tempo pequena para os testes não esperarem de verdade — usada para escalonar `msLimiteFala` e delays de `setTimeout` nos fakes abaixo. */
+const MS_UNIDADE_TESTE = 10;
 
 beforeEach(() => {
   redefinirSaudeDaVozParaTestes();
@@ -77,47 +90,56 @@ function criarUtteranceFalsa(): UtteranceFala {
 }
 
 /**
- * Monta um `AmbienteFala` de teste. Cada `speak()` empurra a utterance em
+ * Monta um `AmbienteFala` de teste. `speak()` empurra a utterance em
  * `chamadas` e delega para `aoFalar` decidir o que acontece depois (disparar
  * `onstart`/`onend`/`onerror`, ou não disparar nada — simulando o travamento
- * do Chrome). `numero` é 1 na 1ª tentativa, 2 no retry. `cancelChamadas.total`
+ * do Chrome). Sem retry, `speak()` é chamado no máximo uma vez por
+ * `tocarTexto` — `chamadas.length` prova isso nos testes. `cancelChamadas.total`
  * conta quantas vezes `sintese.cancel()` foi chamado — usado pelo teste do
- * achado 1, que prova que o `timerLimite` cancela a síntese de verdade.
+ * `timerLimite`, que prova que ele cancela a síntese de verdade.
  */
 function criarAmbienteFalso(
-  aoFalar: (fala: UtteranceFala, numero: number) => void,
+  aoFalar: (fala: UtteranceFala) => void,
   opcoes: {
-    msEsperaInicio?: number;
     /** Vozes que `getVoices()` devolve — vazio por padrão (nenhuma voz escolhida). */
     vozes?: SpeechSynthesisVoice[];
     /** Override do teto do `timerLimite` — ver `AmbienteFala.msLimiteFala`. */
     msLimiteFala?: number;
+    /**
+     * Valor fixo de `sintese.speaking` durante o teste. Existe só para provar
+     * que `tocarTexto` IGNORA este campo na decisão de travamento (medição
+     * real mostrou `speaking: true` tanto no caso saudável quanto no motor
+     * travado — ver comentário de `desistir()` em `fala.ts`). Omitido por
+     * padrão (`speaking` fica `undefined`, motor falso "antigo" sem o campo).
+     */
+    speaking?: boolean;
   } = {},
 ): { ambiente: AmbienteFala; chamadas: UtteranceFala[]; cancelChamadas: { total: number } } {
-  const { msEsperaInicio = MS_ESPERA_INICIO_TESTE, vozes = [], msLimiteFala } = opcoes;
+  const { vozes = [], msLimiteFala, speaking } = opcoes;
   const chamadas: UtteranceFala[] = [];
   const cancelChamadas = { total: 0 };
   const sintese: SinteseFala = {
     cancel() {
       cancelChamadas.total += 1;
       // Cancelar dispara 'onerror: canceled' na utterance mais recente —
-      // exatamente o que o Chrome faz de verdade quando o retry cancela a
-      // tentativa presa.
+      // exatamente o que o Chrome faz de verdade ao cancelar uma fala.
       chamadas.at(-1)?.onerror?.({ error: "canceled" });
     },
     speak(fala) {
       chamadas.push(fala);
-      aoFalar(fala, chamadas.length);
+      aoFalar(fala);
     },
     getVoices() {
       return vozes;
+    },
+    get speaking() {
+      return speaking ?? false;
     },
   };
   const ambiente: AmbienteFala = {
     sintese,
     criarFala: () => criarUtteranceFalsa(),
     esperarGesto: async () => {},
-    msEsperaInicio,
     msLimiteFala,
   };
   return { ambiente, chamadas, cancelChamadas };
@@ -138,12 +160,19 @@ function saudeAtual(): boolean {
   return atual;
 }
 
-// --------------------------------------------------- watchdog / retry
+// --------------------------------------------------- watchdog (sem retry)
 
-test("start nunca dispara: retry único e depois marca a voz indisponível", async () => {
-  const { ambiente, chamadas } = criarAmbienteFalso(() => {
-    // Nunca dispara onstart/onend/onerror — reproduz o travamento do Chrome.
-  });
+test("nem onstart nem onend disparam: timerLimite estoura e marca a voz indisponível, sem retry", async () => {
+  const { ambiente, chamadas } = criarAmbienteFalso(
+    () => {
+      // Nunca dispara onstart/onend/onerror — reproduz o travamento real do
+      // Chrome/macOS (ver medição no cabeçalho do arquivo e em `desistir()`
+      // de fala.ts). `speaking: true` fixo prova que este campo não muda o
+      // resultado — a decisão é só "onstart nunca chegou".
+      // (não precisa setar nada aqui; a opção `speaking` cobre isso)
+    },
+    { msLimiteFala: MS_UNIDADE_TESTE * 2, speaking: true },
+  );
   const motor = motorDoBrowser(ambiente);
 
   await assert.doesNotReject(
@@ -151,11 +180,50 @@ test("start nunca dispara: retry único e depois marca a voz indisponível", asy
     "tocarTexto nunca pode lançar, mesmo com o motor travado",
   );
 
-  assert.equal(chamadas.length, 2, "esperava a tentativa original + 1 retry, nada mais");
-  assert.equal(saudeAtual(), true, "2ª tentativa também travou: voz deveria virar indisponível");
+  assert.equal(
+    chamadas.length,
+    1,
+    "sem retry: uma única chamada a speak(), mesmo com o motor travado",
+  );
+  assert.equal(saudeAtual(), true, "timerLimite estourou sem onstart nem onend: voz deveria virar indisponível");
 });
 
-test("start dispara normalmente: sem retry, voz continua disponível", async () => {
+/**
+ * CAUSA RAIZ da última palavra da contagem (e da pergunta/festa) saírem
+ * repetidas: o bug real do Chrome/macOS documentado no cabeçalho deste
+ * arquivo — o motor às vezes narra de verdade sem NUNCA disparar `onstart`.
+ * A versão antiga do watchdog lia "onstart não chegou" como "motor travado"
+ * e disparava um retry (`cancel()` + novo `speak()`) — só que `cancel()` não
+ * interrompe a tempo o áudio que o motor já começou a narrar, então as DUAS
+ * chamadas eram ouvidas: a palavra saía duplicada. A correção elimina o
+ * retry inteiro: este teste prova que, mesmo sem `onstart`, o `onend`
+ * chegando resolve a fala normalmente — UMA chamada a `speak()` só — e que
+ * `speaking: true` (fixo aqui, provando que o campo é ignorado) não muda
+ * nada nessa decisão.
+ */
+test("motor saudável sem onstart mas com onend: uma fala só, voz continua disponível", async () => {
+  const { ambiente, chamadas } = criarAmbienteFalso(
+    (fala) => {
+      // onstart nunca dispara — só onend, como no bug real documentado
+      // acima. `speaking: true` (opção abaixo) prova que este campo não é
+      // usado como sinal de travamento.
+      setTimeout(() => fala.onend?.(), MS_UNIDADE_TESTE);
+    },
+    { msLimiteFala: MS_UNIDADE_TESTE * 10, speaking: true },
+  );
+  const motor = motorDoBrowser(ambiente);
+
+  await assert.doesNotReject(() => motor.tocarTexto("Nine", 0.8, new AbortController().signal));
+
+  assert.equal(
+    chamadas.length,
+    1,
+    "onend chegou antes do timerLimite — nunca deveria haver uma 2ª chamada a speak()",
+  );
+  assert.equal(saudeAtual(), false, "onend chegou normalmente — motor não estava travado");
+});
+
+test("onstart dispara normalmente: voz continua disponível", async () => {
   const { ambiente, chamadas } = criarAmbienteFalso((fala) => {
     fala.onstart?.();
     fala.onend?.();
@@ -164,24 +232,8 @@ test("start dispara normalmente: sem retry, voz continua disponível", async () 
 
   await motor.tocarTexto("Cadê o papai?", 0.8, new AbortController().signal);
 
-  assert.equal(chamadas.length, 1, "start disparou na 1ª tentativa — não deveria haver retry");
+  assert.equal(chamadas.length, 1, "uma única chamada a speak()");
   assert.equal(saudeAtual(), false, "voz não deveria ser marcada indisponível");
-});
-
-test("1ª tentativa trava, retry recupera: nunca marca a voz indisponível", async () => {
-  const { ambiente, chamadas } = criarAmbienteFalso((fala, numero) => {
-    if (numero === 2) {
-      fala.onstart?.();
-      fala.onend?.();
-    }
-    // numero === 1: nunca dispara nada, força o watchdog a agir.
-  });
-  const motor = motorDoBrowser(ambiente);
-
-  await motor.tocarTexto("Cadê a vovó?", 0.8, new AbortController().signal);
-
-  assert.equal(chamadas.length, 2, "esperava exatamente 1 retry");
-  assert.equal(saudeAtual(), false, "a 2ª tentativa recuperou antes do watchdog desistir");
 });
 
 test("'not-allowed' é falta de gesto, não travamento: não marca indisponível", async () => {
@@ -194,22 +246,22 @@ test("'not-allowed' é falta de gesto, não travamento: não marca indisponível
 
   await motor.tocarTexto("Cadê o vovô?", 0.8, new AbortController().signal);
 
-  assert.equal(chamadas.length, 1, "not-allowed não deveria disparar retry");
+  assert.equal(chamadas.length, 1, "not-allowed não deveria disparar uma nova chamada a speak()");
   assert.equal(saudeAtual(), false, "not-allowed não pode ser confundido com travamento");
 });
 
 test("fala que já iniciou não é marcada como travada mesmo com onend atrasado", async () => {
   const { ambiente, chamadas } = criarAmbienteFalso((fala) => {
     fala.onstart?.();
-    // onend só chega bem depois do msEsperaInicio: já tinha começado, então
-    // não pode ser tratado como watchdog estourado.
-    setTimeout(() => fala.onend?.(), MS_ESPERA_INICIO_TESTE * 3);
+    // onend só chega bem depois — já tinha começado, então não pode ser
+    // tratado como timerLimite estourado por travamento.
+    setTimeout(() => fala.onend?.(), MS_UNIDADE_TESTE * 3);
   });
   const motor = motorDoBrowser(ambiente);
 
   await motor.tocarTexto("Espera aí, ainda estou falando", 0.8, new AbortController().signal);
 
-  assert.equal(chamadas.length, 1, "start já tinha disparado — não pode haver retry");
+  assert.equal(chamadas.length, 1, "onstart já tinha disparado — só uma chamada a speak()");
   assert.equal(saudeAtual(), false, "fala longa em andamento não é travamento");
 });
 
@@ -225,7 +277,7 @@ test("timerLimite cancela a síntese antes de resolver, sem marcar a voz indispo
       fala.onstart?.();
       // onend nunca chega.
     },
-    { msLimiteFala: MS_ESPERA_INICIO_TESTE * 2 },
+    { msLimiteFala: MS_UNIDADE_TESTE * 2 },
   );
   const motor = motorDoBrowser(ambiente);
 
@@ -251,9 +303,18 @@ test("timerLimite cancela a síntese antes de resolver, sem marcar a voz indispo
   );
 });
 
-// -------------------------------------------- janela por tipo de voz (achado 2)
+// ------------------------------------------------- voz remota (rede) lenta
 
-test("voz remota lenta: onstart depois da janela curta, mas dentro da janela alargada, não marca indisponível", async () => {
+/**
+ * Antes existia uma janela curta por voz (watchdog dimensionado por
+ * `msEsperaInicio`, alargado 3x para voz remota) separada do `timerLimite`.
+ * Foi removida junto com o retry: como não há mais watchdog nenhum além do
+ * `timerLimite` (até 12s, igual para qualquer voz), uma voz remota (ex.:
+ * Google no Chrome) que demora para o 1º `onstart` só precisa terminar
+ * dentro desse teto único — não existe mais janela separada para depender
+ * de `localService`.
+ */
+test("voz remota lenta: onstart atrasado, mas dentro do timerLimite, não marca indisponível", async () => {
   const vozRemota: SpeechSynthesisVoice = {
     default: false,
     lang: "pt-BR",
@@ -264,30 +325,20 @@ test("voz remota lenta: onstart depois da janela curta, mas dentro da janela ala
 
   const { ambiente, chamadas } = criarAmbienteFalso(
     (fala) => {
-      // Chega depois da janela curta (MS_ESPERA_INICIO_TESTE) mas antes da
-      // janela alargada para voz remota (3x, ver MULTIPLICADOR_ESPERA_VOZ_REMOTA
-      // em fala.ts) — exatamente o que acontece com a voz do Google carregando.
+      // Atraso relevante, mas bem dentro do `timerLimite` do teste abaixo.
       setTimeout(() => {
         fala.onstart?.();
         fala.onend?.();
-      }, MS_ESPERA_INICIO_TESTE * 2);
+      }, MS_UNIDADE_TESTE * 2);
     },
-    { vozes: [vozRemota] },
+    { vozes: [vozRemota], msLimiteFala: MS_UNIDADE_TESTE * 10 },
   );
   const motor = motorDoBrowser(ambiente);
 
   await motor.tocarTexto("Cadê a titia?", 0.8, new AbortController().signal);
 
-  assert.equal(
-    chamadas.length,
-    1,
-    "onstart chegou dentro da janela alargada — não deveria ter disparado o retry",
-  );
-  assert.equal(
-    saudeAtual(),
-    false,
-    "voz remota carregando não pode ser confundida com motor travado",
-  );
+  assert.equal(chamadas.length, 1, "onstart chegou dentro do timerLimite — só uma chamada a speak()");
+  assert.equal(saudeAtual(), false, "voz remota carregando não pode ser confundida com motor travado");
 });
 
 // --------------------------------------------------------- assinatura
