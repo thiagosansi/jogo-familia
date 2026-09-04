@@ -139,6 +139,45 @@
   inline-size: clamp(130px, 26vmin, 270px);
 }
 
+/* -------------------------------------------------------- baralho frases */
+
+/* "Sentences" (fase 2, ver cabeçalho de ingles.ts): um peixinho grande e um
+   pequeno, MESMA cor — o ícone do cartão de escolha já ensaia a pista nova
+   (tamanho) sem inventar um desenho que a rodada de verdade não usa. */
+.iconeFrases {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+.pontoFraseGrande {
+  inline-size: clamp(34px, 8vmin, 68px);
+}
+
+.pontoFrasePequena {
+  inline-size: clamp(19px, 4.4vmin, 38px);
+}
+
+/* Tamanho do `<ObjetoMar>` DENTRO de uma alternativa de verdade (nível 2 do
+   baralho `frases` pede para achar o tamanho certo, não só a cor) — mesma
+   armadilha do `.pontoContagem` acima: `<ObjetoMar>` já vem com
+   `inline-size: 100%` (objetos.module.css); como CSS Modules nunca entram em
+   `@layer`, a classe que chega depois no className (`className` combinado em
+   `<ObjetoMar>`) tem a MESMA especificidade e ganha pela ordem de import —
+   já comprovado pelo `.pontoContagem` de cima, que segue o mesmo padrão.
+   "small" ~55% da largura da bolha (pedido do brief), "big" preenche como
+   qualquer outro baralho — a classe existe mesmo assim, para o tamanho ficar
+   explícito no código, não implícito por "ausência de classe". */
+.grande {
+  inline-size: 100%;
+}
+
+.pequeno {
+  inline-size: 55%;
+}
+
 /* ------------------------------------------------------ trocar de baralho */
 
 /* Volta para a tela de escolha sem sair do jogo. Canto inferior DIREITO:
