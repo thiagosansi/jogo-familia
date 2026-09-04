@@ -1,0 +1,82 @@
+/* Recorte circular. Tudo aqui é para o adulto: alvos grandes, mas densidade
+   normal de painel — não é tela de criança. */
+
+.caixa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dica {
+  margin: 0;
+  max-inline-size: 40ch;
+  text-align: center;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--color-espuma) 75%, transparent);
+}
+
+.erro {
+  margin: 0;
+  color: var(--color-coral);
+  font-weight: 700;
+  text-align: center;
+}
+
+.visor {
+  inline-size: min(320px, 78vw);
+  block-size: min(320px, 78vw);
+  border-radius: var(--raio);
+  background: var(--color-mar-900);
+  /* O canvas captura o arrasto: sem isto o gesto vira scroll da página. */
+  touch-action: none;
+  cursor: grab;
+}
+.visor:active {
+  cursor: grabbing;
+}
+
+.zoom {
+  inline-size: min(320px, 78vw);
+  min-block-size: var(--toque-min);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+.zoom input {
+  flex: 1;
+  /* Trilho gordo: o adulto ajusta com o polegar, sem mira fina. */
+  block-size: 32px;
+  accent-color: var(--color-areia);
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.acao {
+  min-block-size: 56px;
+  min-inline-size: 140px;
+  padding-inline: 20px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 35%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.acaoPrimaria {
+  border-color: transparent;
+  background: var(--color-coral);
+  color: var(--color-tinta);
+}
+.acao:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

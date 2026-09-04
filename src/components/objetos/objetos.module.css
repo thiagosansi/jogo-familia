@@ -1,0 +1,201 @@
+/* Estilos dos modos "cores e formas" e "contar de 1 a 5".
+   Tudo em cima dos tokens de globals.css (--toque-min, --gap, --anim-*), então
+   `prefers-reduced-motion` já desliga o movimento sem precisar de exceção. */
+
+/* ------------------------------------------------------------ <ObjetoMar> */
+
+/* O SVG ocupa o botão inteiro e mantém 1:1. Quem garante os 88px de alvo é o
+   <BotaoAlternativa> (min-inline/block-size: --toque-min); aqui só não podemos
+   estourar a caixa em tela pequena. */
+.objeto {
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.35));
+}
+
+/* Contorno escuro grosso: a silhueta tem que ser legível a um metro, em cima
+   de qualquer fundo, para quem não distingue a cor. */
+.contorno {
+  stroke: #04121f;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  paint-order: stroke fill markers;
+}
+
+/* Detalhes desenhados com a própria cor escurecida — sem cor nova, para não
+   competir com a cor que está sendo ensinada. */
+.detalhe {
+  stroke: color-mix(in srgb, currentColor 42%, #04121f);
+}
+.detalheCheio {
+  fill: color-mix(in srgb, currentColor 52%, #04121f);
+  stroke: none;
+}
+.brilho {
+  fill: #fdf6e3;
+  stroke: none;
+  opacity: 0.9;
+}
+.pupila {
+  fill: #04121f;
+  stroke: none;
+}
+
+/* ------------------------------------------------------- peça na alternativa */
+
+.peca {
+  position: relative;
+  /* Nunca menor que o alvo mínimo de toque; cresce com a tela até o teto. */
+  inline-size: clamp(88px, 24vmin, 170px);
+  block-size: clamp(88px, 24vmin, 170px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Acertou: a peça certa some numa bolha que sobe. */
+.sumindo {
+  animation: sumir calc(var(--anim-media, 420ms) * 1.6) cubic-bezier(0.3, 0, 0.4, 1) forwards;
+}
+
+@keyframes sumir {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.25) rotate(-6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.2) translateY(-40%);
+    opacity: 0;
+  }
+}
+
+/* Errou: a peça balança (careta) — nunca some, nunca acusa erro. */
+.tremendo {
+  animation: tremer var(--anim-media, 420ms) ease-in-out 2;
+}
+
+@keyframes tremer {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+/* ------------------------------------------------------------ modo contar */
+
+/* Bichinho já contado: encolhe, esmaece e ganha um visto verde. Sem número
+   escrito — a criança de 3 anos não lê. */
+.contado {
+  opacity: 0.62;
+  transform: scale(0.82);
+  transition:
+    opacity var(--anim-rapida, 160ms) ease,
+    transform var(--anim-rapida, 160ms) ease;
+}
+.contado::after {
+  content: "";
+  position: absolute;
+  inset-block-start: -4%;
+  inset-inline-end: -4%;
+  inline-size: 34%;
+  block-size: 34%;
+  min-inline-size: 26px;
+  min-block-size: 26px;
+  border-radius: 50%;
+  border: 3px solid #04121f;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 13l4.5 4.5L19 7' fill='none' stroke='%23fdf6e3' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 68% no-repeat,
+    var(--color-alga, #2fbf71);
+  animation: marcar var(--anim-media, 420ms) cubic-bezier(0.2, 1.6, 0.4, 1) 1;
+}
+
+@keyframes marcar {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Progresso da contagem: uma bolinha por bichinho, cheia conforme conta.
+   É a leitura visual do "quantos já contei" — de novo, sem numeral. */
+.pontos {
+  display: flex;
+  gap: clamp(8px, 2vmin, 16px);
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ponto {
+  inline-size: clamp(18px, 4vmin, 30px);
+  block-size: clamp(18px, 4vmin, 30px);
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--color-espuma, #fdf6e3) 60%, transparent);
+  background: transparent;
+  transition: background var(--anim-rapida, 160ms) ease;
+}
+.ponto[data-cheio="true"] {
+  background: var(--color-areia, #ffd166);
+  border-color: var(--color-areia, #ffd166);
+}
+
+/* ------------------------------------------------------------------ voltar */
+
+/* Voltar para a home. Fica embaixo à esquerda: o cabeçalho do <Palco> (pergunta
+   + botão de repetir) ocupa o topo, e o canto superior direito já é da área dos
+   pais. Alvo cheio de 88px, visual discreto. */
+.voltar {
+  position: fixed;
+  inset-block-end: max(8px, env(safe-area-inset-bottom));
+  inset-inline-start: max(8px, env(safe-area-inset-left));
+  inline-size: var(--toque-min, 88px);
+  block-size: var(--toque-min, 88px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 4px solid color-mix(in srgb, var(--color-espuma, #fdf6e3) 35%, transparent);
+  background: color-mix(in srgb, var(--color-mar-900, #041d33) 70%, transparent);
+  color: color-mix(in srgb, var(--color-espuma, #fdf6e3) 80%, transparent);
+  text-decoration: none;
+  z-index: 2;
+}
+.voltar svg {
+  inline-size: 44%;
+  block-size: auto;
+}
+.voltar:active {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sumindo,
+  .tremendo,
+  .contado::after {
+    animation: none !important;
+  }
+  /* Sem animação, a peça certa ainda precisa sumir. */
+  .sumindo {
+    opacity: 0;
+  }
+}

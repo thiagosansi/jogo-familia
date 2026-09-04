@@ -1,0 +1,105 @@
+/* Relatório dos pais. Tela de ADULTO: texto para ler, não alvo de 88px para
+   dedo de criança. Ainda assim herda a paleta do jogo — é o mesmo app. */
+
+.tela {
+  display: block;
+  max-inline-size: 62ch;
+  margin-inline: auto;
+  padding: clamp(16px, 4vmin, 40px);
+  padding-block-start: max(clamp(16px, 4vmin, 40px), calc(env(safe-area-inset-top) + 12px));
+  padding-block-end: max(clamp(24px, 6vmin, 56px), calc(env(safe-area-inset-bottom) + 24px));
+  color: var(--color-espuma);
+}
+
+.cabecalho {
+  margin-block-end: clamp(16px, 3vmin, 28px);
+}
+.assinatura {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--color-espuma) 62%, transparent);
+}
+
+.vazio {
+  margin: 0;
+  padding: 20px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-mar-700) 45%, transparent);
+  line-height: 1.5;
+}
+
+.eixos {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 clamp(20px, 4vmin, 36px);
+  padding: 0;
+  list-style: none;
+}
+
+.cartao,
+.tempo {
+  padding: clamp(14px, 3vmin, 22px);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-mar-700) 45%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 12%, transparent);
+}
+
+.tempo {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.tituloEixo {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-areia);
+}
+
+.frase {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.detalhe {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-espuma) 75%, transparent);
+}
+
+/* Botão de adulto: alvo confortável, sem o apelo infantil dos cards do jogo. */
+.botao {
+  min-block-size: 52px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--color-coral);
+  color: var(--color-tinta);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.botao:active {
+  background: var(--color-coral-escuro);
+}
+
+.recado {
+  font-size: 0.95rem;
+  color: var(--color-alga);
+}
+
+.rodape {
+  margin: clamp(16px, 3vmin, 28px) 0 0;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--color-espuma) 62%, transparent);
+}
+
+.voltar {
+  display: inline-block;
+  margin-block-start: 18px;
+  padding: 10px 0;
+  color: var(--color-agua);
+  font-weight: 700;
+}

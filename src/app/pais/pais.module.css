@@ -1,0 +1,335 @@
+/* Painel dos pais — densidade de app adulto, mas os alvos continuam grandes
+   porque o adulto também está usando um tablet, muitas vezes de pé com a
+   criança no colo. Cores e raios vêm dos tokens de globals.css. */
+
+.tela {
+  max-inline-size: 720px;
+  inline-size: 100%;
+  margin-inline: auto;
+  padding-block-end: 64px;
+}
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cabecalho .titulo {
+  text-align: start;
+  font-size: clamp(1.4rem, 3.4vmin, 2rem);
+}
+
+.voltar {
+  min-block-size: 56px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 18px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 30%, transparent);
+  color: var(--color-espuma);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.recado {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-agua) 22%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-agua) 55%, transparent);
+  font-weight: 700;
+}
+
+.secao {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--color-mar-900) 40%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 12%, transparent);
+}
+
+.subtitulo {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.vazio,
+.ajuda {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-espuma) 72%, transparent);
+}
+
+/* ------------------------------------------------------------------ lista */
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cartao {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-mar-700) 35%, transparent);
+}
+
+.dados {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-inline-size: 120px;
+}
+.dados strong {
+  font-size: 1.15rem;
+}
+.papel {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-espuma) 68%, transparent);
+}
+
+.botoesCartao {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.miniatura,
+.miniaturaVazia {
+  inline-size: 72px;
+  block-size: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  background: color-mix(in srgb, var(--color-mar-900) 70%, transparent);
+  border: 3px solid color-mix(in srgb, var(--color-espuma) 25%, transparent);
+}
+
+/* ------------------------------------------------------------- formulário */
+
+.linhaFoto {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.linhaFoto .miniatura,
+.linhaFoto .miniaturaVazia {
+  inline-size: 96px;
+  block-size: 96px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 800;
+}
+.campo input {
+  min-block-size: 56px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 30%, transparent);
+  background: color-mix(in srgb, var(--color-mar-900) 60%, transparent);
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 700;
+}
+
+.papeis {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-weight: 800;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-start: 8px;
+}
+.chip {
+  min-block-size: 56px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 16px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 28%, transparent);
+  cursor: pointer;
+  font-weight: 700;
+}
+/* O radio some visualmente, mas continua no fluxo do teclado e do leitor de
+   tela — o chip inteiro vira o alvo de toque. */
+.chip input {
+  position: absolute;
+  opacity: 0;
+  inline-size: 1px;
+  block-size: 1px;
+}
+.chip:has(input:checked) {
+  background: var(--color-areia);
+  border-color: var(--color-areia);
+  color: var(--color-tinta);
+}
+.chip:has(input:focus-visible) {
+  outline: var(--borda-foco) solid var(--color-areia);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ ações */
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.acao {
+  min-block-size: 56px;
+  min-inline-size: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 20px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 32%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.acao:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.acaoPrimaria {
+  border-color: transparent;
+  background: var(--color-coral);
+  color: var(--color-tinta);
+}
+
+/* Excluir: o preenchimento acompanha o hold. Como é feedback (informação, não
+   enfeite), ele vem de uma variável atualizada por rAF em vez de animação CSS —
+   assim continua visível com prefers-reduced-motion. */
+.acaoPerigo {
+  --progresso: 0;
+  min-inline-size: 120px;
+  border-color: color-mix(in srgb, var(--color-coral) 60%, transparent);
+  color: var(--color-coral);
+  touch-action: none;
+  background:
+    linear-gradient(
+      90deg,
+      var(--color-coral-escuro) calc(var(--progresso) * 100%),
+      transparent 0
+    );
+}
+
+/* -------------------------------------------------- prévia da importação */
+
+/* A lista de conferência antes de gravar a pasta inteira. Densa de propósito:
+   o adulto precisa bater o olho em sete itens sem rolar a tela três vezes. */
+.previa {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.listaPrevia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Uma pasta pode ter dezenas de fotos; a prévia rola dentro de si mesma em
+     vez de empurrar os botões de confirmar para fora da tela. */
+  max-block-size: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.itemPrevia {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-mar-700) 35%, transparent);
+}
+/* Miniatura menor que a dos cartões: aqui ela só confirma "é essa imagem". */
+.itemPrevia .miniatura,
+.itemPrevia .miniaturaVazia {
+  inline-size: 56px;
+  block-size: 56px;
+}
+
+/* Alvo grande de propósito: desmarcar um item é o gesto mais provável aqui. */
+.marcador {
+  inline-size: 32px;
+  block-size: 32px;
+  flex: none;
+  accent-color: var(--color-areia);
+}
+
+.nomePrevia,
+.papelPrevia {
+  min-block-size: 48px;
+  inline-size: 100%;
+  max-inline-size: 320px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 26%, transparent);
+  background: color-mix(in srgb, var(--color-mar-900) 60%, transparent);
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ nuvem */
+
+/* Linhas com um campo largo e um botão do lado; quebram no celular do adulto. */
+.linhaNuvem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.linhaNuvem .nomePrevia {
+  flex: 1;
+  inline-size: auto;
+  min-inline-size: 180px;
+}
+
+/* O link do jogo é longo e o adulto precisa conferir o começo dele. */
+.campo input[readonly] {
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-x: auto;
+}
+
+.erro {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-coral) 22%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-coral) 55%, transparent);
+  font-weight: 700;
+}

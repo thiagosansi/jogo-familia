@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   Design system infantil — tema "fundo do mar"
+   Público: criança de 3 anos (não lê) + adulto (área dos pais).
+   Regras:
+   - Nada essencial depende de texto: forma + cor + ícone primeiro.
+   - Alvo de toque nunca menor que --toque-min (88px), bem acima dos 44px
+     do guia da Apple, porque a mira de uma criança de 3 anos é imprecisa.
+   - Contraste alto em cima de fundo escuro (tablet usado com luz ambiente).
+   ========================================================================= */
+
+@theme inline {
+  /* Paleta fundo do mar */
+  --color-mar-900: #041d33; /* abissal */
+  --color-mar-800: #062a4a; /* fundo padrão */
+  --color-mar-700: #0e4d7a; /* água média */
+  --color-mar-500: #1c7fb8; /* água clara */
+  --color-coral: #ff7a5c; /* coral (ação primária) */
+  --color-coral-escuro: #d8452a;
+  --color-areia: #ffd166; /* amarelo areia (destaque) */
+  --color-agua: #3ddad7; /* verde-água */
+  --color-alga: #2fbf71; /* verde alga (acerto) */
+  --color-espuma: #fdf6e3; /* texto claro */
+  --color-tinta: #2b1006; /* texto sobre cores claras */
+
+  --font-sans: var(--font-nunito), ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+}
+
+:root {
+  /* Alvo mínimo de toque — todo elemento interativo respeita este piso. */
+  --toque-min: 88px;
+  /* Alvo dos cards de modo na home (bem maior que o piso). */
+  --toque-card: clamp(150px, 30vmin, 320px);
+  /* Teto: evita cards em coluna esticada quando sobra altura. */
+  --card-max: clamp(180px, 46vmin, 460px);
+
+  --raio: 32px;
+  --gap: clamp(12px, 2.5vmin, 28px);
+  --borda-foco: 6px;
+
+  /* Tipografia grande: rótulo do card e título. */
+  --texto-card: clamp(1.25rem, 3.2vmin, 2rem);
+  --texto-titulo: clamp(1.5rem, 4vmin, 2.75rem);
+
+  /* Duração base das animações — zerada em prefers-reduced-motion. */
+  --anim-rapida: 160ms;
+  --anim-media: 420ms;
+  --anim-lenta: 6s;
+
+  color-scheme: dark;
+}
+
+/* Acessibilidade: respeitar quem pediu menos movimento. Os tokens viram 0,
+   então qualquer animação futura que use as variáveis já nasce desligada. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --anim-rapida: 0ms;
+    --anim-media: 0ms;
+    --anim-lenta: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer base {
+  html {
+    height: 100%;
+    /* Bloqueia zoom acidental de dois dedos sem impedir o zoom do sistema. */
+    touch-action: manipulation;
+  }
+  body {
+    min-height: 100%;
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-espuma);
+    background:
+      radial-gradient(120% 90% at 50% 0%, var(--color-mar-700) 0%, transparent 60%),
+      linear-gradient(180deg, var(--color-mar-800) 0%, var(--color-mar-900) 100%);
+    background-attachment: fixed;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+  }
+  button,
+  a {
+    -webkit-touch-callout: none;
+  }
+  /* Foco sempre visível e gordo (o adulto navega com teclado na área dos pais). */
+  :focus-visible {
+    outline: var(--borda-foco) solid var(--color-areia);
+    outline-offset: 4px;
+  }
+}
+
+@layer components {
+  /* Qualquer coisa tocável no jogo. */
+  .alvo-toque {
+    min-inline-size: var(--toque-min);
+    min-block-size: var(--toque-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tela {
+    min-block-size: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(16px, 3vmin, 40px);
+    padding-block-end: max(clamp(16px, 3vmin, 40px), env(safe-area-inset-bottom));
+    gap: var(--gap);
+  }
+
+  /* Grade dos modos: 2 colunas em portrait, 3+ em landscape — sem media query,
+     o auto-fit resolve os dois casos de tablet. */
+  .grade-modos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--toque-card), 1fr));
+    /* 1fr puro: as linhas dividem toda a altura livre (portrait e landscape).
+       Nada de minmax() aqui — um piso em px trava a distribuição do fr no
+       Chrome e os cards ficam pequenos. O piso vem do min-block-size do card. */
+    grid-auto-rows: 1fr;
+    gap: var(--gap);
+    align-content: stretch;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Cada item da grade centraliza o card dentro da linha. */
+  .grade-modos > li {
+    display: grid;
+    align-content: center;
+    justify-items: stretch;
+  }
+
+  /* Card de modo: ilustração enorme + cor própria. O texto é reforço para o
+     adulto — a criança navega por cor e desenho. */
+  .card-modo {
+    --cor: var(--color-agua);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    min-block-size: var(--toque-card);
+    max-block-size: var(--card-max);
+    min-inline-size: var(--toque-min);
+    padding: clamp(12px, 2vmin, 24px);
+    border: 4px solid color-mix(in srgb, var(--cor) 70%, white 30%);
+    border-radius: var(--raio);
+    background: linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--cor) 92%, white 8%),
+      color-mix(in srgb, var(--cor) 70%, black 30%)
+    );
+    color: var(--color-tinta);
+    text-decoration: none;
+    box-shadow: 0 10px 0 0 color-mix(in srgb, var(--cor) 55%, black 45%);
+    transition: transform var(--anim-rapida) ease, box-shadow var(--anim-rapida) ease;
+  }
+  .card-modo:active {
+    transform: translateY(6px);
+    box-shadow: 0 4px 0 0 color-mix(in srgb, var(--cor) 55%, black 45%);
+  }
+  .card-modo svg {
+    inline-size: 62%;
+    block-size: auto;
+    max-block-size: 55%;
+    filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.25));
+  }
+  .card-modo span {
+    font-size: var(--texto-card);
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    text-align: center;
+  }
+
+  .titulo {
+    font-size: var(--texto-titulo);
+    font-weight: 800;
+    margin: 0;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  /* Botão discreto da área dos pais: pequeno visualmente, mas com alvo grande
+     e sem apelo infantil (a criança não deve querer tocar). */
+  .botao-pais {
+    position: fixed;
+    inset-block-start: max(8px, env(safe-area-inset-top));
+    inset-inline-end: max(8px, env(safe-area-inset-right));
+    inline-size: var(--toque-min);
+    block-size: var(--toque-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: color-mix(in srgb, var(--color-espuma) 55%, transparent);
+    background: color-mix(in srgb, var(--color-mar-900) 55%, transparent);
+    text-decoration: none;
+  }
+  .botao-pais svg {
+    inline-size: 40%;
+    block-size: auto;
+  }
+
+  /* Só para leitores de tela / SEO — nunca visível. */
+  .so-leitor {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}

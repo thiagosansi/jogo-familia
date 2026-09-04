@@ -1,0 +1,196 @@
+/* Modo Animais. Duas fases no mesmo layout: explorar (grade livre de bichos)
+   e perguntar (o <Palco> do engine). Medidas e cores saem dos tokens de
+   globals.css — nada de valor mágico aqui. */
+
+.tela {
+  min-block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: clamp(12px, 2.5vmin, 32px);
+  padding-block-start: max(clamp(12px, 2.5vmin, 32px), calc(env(safe-area-inset-top) + 8px));
+  padding-block-end: max(clamp(12px, 2.5vmin, 32px), env(safe-area-inset-bottom));
+}
+
+.instrucao {
+  margin: 0;
+  font-size: var(--texto-titulo);
+  font-weight: 800;
+  text-align: center;
+  text-wrap: balance;
+  text-shadow: 0 3px 6px rgb(0 0 0 / 0.4);
+}
+
+/* Grade da fase explorar: mesma lógica auto-fit do <Palco>, então portrait e
+   landscape saem do mesmo markup. */
+.grade {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(clamp(120px, 24vmin, 220px), 1fr));
+  grid-auto-rows: 1fr;
+  gap: var(--gap);
+  align-content: center;
+  justify-items: center;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Bolha do bicho: alvo enorme (a mira de uma criança de 3 anos é imprecisa) e
+   afundamento imediato no toque. */
+.bolha {
+  --cor: var(--color-agua);
+  inline-size: 100%;
+  block-size: 100%;
+  min-inline-size: var(--toque-min);
+  min-block-size: var(--toque-min);
+  max-inline-size: clamp(140px, 28vmin, 260px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(8px, 1.6vmin, 18px);
+  border: 5px solid color-mix(in srgb, var(--cor) 70%, white 30%);
+  border-radius: 50%;
+  aspect-ratio: 1;
+  background: radial-gradient(
+    120% 120% at 30% 20%,
+    color-mix(in srgb, var(--cor) 92%, white 20%),
+    color-mix(in srgb, var(--cor) 72%, black 28%)
+  );
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 10px 0 0 color-mix(in srgb, var(--cor) 50%, black 50%);
+  transition:
+    transform var(--anim-rapida) ease,
+    box-shadow var(--anim-rapida) ease;
+}
+.bolha:active {
+  transform: translateY(6px);
+  box-shadow: 0 4px 0 0 color-mix(in srgb, var(--cor) 50%, black 50%);
+}
+/* Pulo de confirmação: "eu ouvi o seu toque". */
+.bolha[data-tocado="true"] {
+  animation: pulinho calc(var(--anim-media) * 1.4) cubic-bezier(0.3, 1.4, 0.5, 1) 1;
+}
+
+@keyframes pulinho {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-10%) scale(1.07);
+  }
+  70% {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+.bolha svg {
+  inline-size: 82%;
+  block-size: auto;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.3));
+}
+
+/* Na fase perguntar quem manda no layout é o <Palco> (que já ocupa 100dvh e
+   tem o próprio padding): a tela some do caminho para não gerar rolagem. */
+.telaPalco {
+  padding: 0;
+  gap: 0;
+}
+
+/* Barra de cantos: sair do modo e trocar de fase. Fora do fluxo da grade para
+   não roubar espaço do desenho. */
+.cantos {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+/* Sobre o <Palco>: ele ocupa a tela inteira, então os cantos flutuam por cima
+   dos cantos vazios. O container não captura toque — só os botões. */
+.cantosFixos {
+  position: fixed;
+  inset-block-end: max(8px, env(safe-area-inset-bottom));
+  inset-inline-start: max(8px, env(safe-area-inset-left));
+  inset-inline-end: max(8px, env(safe-area-inset-right));
+  pointer-events: none;
+}
+.cantosFixos > * {
+  pointer-events: auto;
+}
+
+.canto {
+  inline-size: var(--toque-min);
+  block-size: var(--toque-min);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-mar-900) 55%, transparent);
+  color: color-mix(in srgb, var(--color-espuma) 65%, transparent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.canto svg {
+  inline-size: 44%;
+  block-size: auto;
+}
+
+/* Trocar de fase é decisão da criança: este botão é grande e colorido. */
+.trocarFase {
+  --cor: var(--color-areia);
+  min-block-size: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding-inline: clamp(16px, 3vmin, 32px);
+  border: 4px solid color-mix(in srgb, var(--cor) 70%, white 30%);
+  border-radius: var(--raio);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--cor) 92%, white 8%),
+    color-mix(in srgb, var(--cor) 70%, black 30%)
+  );
+  color: var(--color-tinta);
+  font: inherit;
+  font-size: var(--texto-card);
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 0 0 color-mix(in srgb, var(--cor) 55%, black 45%);
+}
+.trocarFase:active {
+  transform: translateY(5px);
+  box-shadow: 0 3px 0 0 color-mix(in srgb, var(--cor) 55%, black 45%);
+}
+.trocarFase svg {
+  inline-size: 1.6em;
+  block-size: auto;
+}
+
+/* Bicho dentro do <Palco> (fase perguntar). */
+.alternativa {
+  inline-size: 100%;
+  display: block;
+}
+
+/* Figurinha da recompensa. */
+.figurinha {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.figurinha svg {
+  inline-size: clamp(40px, 9vmin, 72px);
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bolha[data-tocado="true"] {
+    animation: none !important;
+  }
+}

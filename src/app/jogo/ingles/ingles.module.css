@@ -1,0 +1,131 @@
+/* Estilos próprios do modo "inglês". O resto (peça/sumindo/tremendo, botão de
+   voltar) vem de `@/components/objetos/objetos.module.css` — mesmo padrão
+   visual dos modos "cores" e "contar", para não inventar uma segunda
+   linguagem visual de bolha/toque. */
+
+/* ------------------------------------------------------ baralho números */
+
+/* Contagem visual (baralho `numeros`, no espírito do modo Contar): peixinhos
+   em grade, um por unidade — nunca um numeral escrito, a criança de 3 anos
+   não lê. Cabe até 10 dentro da bolha da alternativa. */
+.contagem {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 3%;
+  inline-size: 82%;
+  block-size: 82%;
+}
+
+.pontoContagem {
+  inline-size: 18%;
+  min-inline-size: 11px;
+  max-inline-size: 26px;
+  block-size: auto;
+  flex: 0 0 auto;
+}
+
+/* -------------------------------------------------- tela de escolha */
+
+/* "Tudo misturado": um desenho de cada baralho, em grade 2x2 — a criança
+   reconhece "um pouco de tudo" sem ler nada. Tamanho absoluto (não `%`): ver
+   o comentário de `TAMANHO_ICONE_ESCOLHA` em page.tsx. */
+.iconeMisturado {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  place-items: center;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+/* `<ObjetoMar>` não tem prop `tamanho` (ver o componente) — só CSS Module
+   dá para dimensionar. Vence `.objeto`/`.card-modo svg` (globals.css): CSS
+   Modules nunca entram em @layer, então sempre ganham de regras em @layer,
+   não importa a especificidade. */
+.pontoMisturado {
+  inline-size: clamp(28px, 7vmin, 60px);
+}
+
+/* "Números": contagem visual — no espírito do modo Contar, nunca um
+   numeral escrito. */
+.iconeContagem {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 8px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+.pontoIcone {
+  inline-size: clamp(28px, 7vmin, 60px);
+}
+
+/* `<Bicho>`/`<Saudacao>` (ao contrário de `<ObjetoMar>`/`.objeto`, que já
+   define `max-block-size: 100%` no próprio módulo) não anulam o
+   `.card-modo svg { max-block-size: 55% }` global (globals.css). Dentro de
+   um wrapper flex/grid sem altura própria definida, esse teto de 55%
+   resolve contra uma altura de referência pequena e ESMAGA o desenho (medido
+   no navegador com `getBoundingClientRect`: 60x33 em vez de 60x60 — 33 é
+   exatamente 55% de 60). `ingles.module.css` nunca entra em @layer, então
+   `max-block-size: none` aqui sempre vence a regra global, não importa a
+   especificidade; o quadrado então vem do `aspect-ratio: 1 / 1`. */
+.iconeQuadrado {
+  aspect-ratio: 1 / 1;
+  max-block-size: none;
+}
+
+/* "Palavras": um bicho + um objeto lado a lado — a mesma dupla que o
+   baralho `cotidiano` sorteia de fato (animal OU forma, nunca os dois numa
+   rodada, mas os dois cabem no cartão de escolha). */
+.iconeDupla {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+/* ------------------------------------------------------ trocar de baralho */
+
+/* Volta para a tela de escolha sem sair do jogo. Canto inferior DIREITO:
+   longe do `<BotaoVoltar>` (inferior esquerdo, 88px) e do `<AvisoVoz>`
+   (empilhado por cima do voltar, ver AvisoVoz.module.css) — os dois cantos
+   nunca se tocam em nenhuma largura de tela. */
+.trocar {
+  position: fixed;
+  inset-block-end: max(8px, env(safe-area-inset-bottom));
+  inset-inline-end: max(8px, env(safe-area-inset-right));
+  min-inline-size: var(--toque-min);
+  min-block-size: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding-inline: clamp(14px, 2.5vmin, 26px);
+  border: 4px solid color-mix(in srgb, var(--color-espuma) 35%, transparent);
+  border-radius: var(--raio);
+  background: color-mix(in srgb, var(--color-mar-900) 70%, transparent);
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 2.4vmin, 1.3rem);
+  cursor: pointer;
+  z-index: 2;
+  transition: transform var(--anim-rapida) ease, opacity var(--anim-rapida) ease;
+}
+.trocar svg {
+  inline-size: 1.3em;
+  block-size: auto;
+}
+.trocar:active {
+  transform: scale(0.94);
+}
+/* Só ativo perguntando (ver page.tsx) — trocar durante "quaseLa"/comemoração
+   cortaria a tentativa ou a festa no meio. Continua visível (a criança vê
+   onde ele está), só perde ação e destaque. */
+.trocar:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

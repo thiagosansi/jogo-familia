@@ -1,0 +1,61 @@
+/* Canto inferior ESQUERDO, mas EMPILHADO ACIMA do botão de voltar — não no
+   mesmo nível dele. O botão de voltar (88px = --toque-min) ocupa esse canto
+   em todas as telas de jogo, seja como `.voltar` (objetos.module.css) ou
+   como `.canto` dentro de `.cantosFixos` (animais.module.css): ambos usam a
+   mesma âncora `inset-block-end: max(8px, env(safe-area-inset-bottom))` e a
+   mesma altura de 88px. Um aviso "colado no canto inferior" (posição antiga
+   deste comentário) CAI EM CIMA desse alvo de toque — foi confirmado no
+   navegador com getBoundingClientRect, os dois retângulos se sobrepõem.
+   A correção soma a altura do alvo de toque (--toque-min) mais a folga do
+   token --gap do design system ao inset-block-end do próprio botão de
+   voltar, então o aviso sempre fica acima dele, com respiro, em qualquer
+   largura de tela. O botão dos pais (`.botao-pais` em globals.css) fica no
+   canto oposto (superior direito) e a grade de alternativas/o botão
+   "Adivinhar" ficam centralizados ou no canto inferior DIREITO — como o
+   aviso segue colado à esquerda e com largura limitada, não chega lá. */
+
+.aviso {
+  position: fixed;
+  inset-block-end: calc(max(8px, env(safe-area-inset-bottom)) + var(--toque-min, 88px) + var(--gap, 12px));
+  inset-inline-start: max(8px, env(safe-area-inset-left));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-inline-size: min(88vw, 420px);
+  padding: 10px 10px 10px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-mar-900) 92%, black 8%);
+  color: var(--color-espuma);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+}
+
+.texto {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+/* Alvo de fechar acessível mesmo pequeno visualmente: o aviso é para o
+   adulto, então não precisa dos 88px de --toque-min (esse mínimo é para a
+   criança tocar sem precisão fina). */
+.fechar {
+  flex: 0 0 auto;
+  inline-size: 32px;
+  block-size: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-espuma) 18%, transparent);
+  color: var(--color-espuma);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--anim-rapida, 160ms) ease;
+}
+.fechar:active {
+  transform: scale(0.9);
+}

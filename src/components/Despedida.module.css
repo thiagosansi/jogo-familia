@@ -1,0 +1,67 @@
+/* Cortina de fim de sessão. Cobre TUDO: enquanto o personagem se despede, a
+   criança não continua tocando no jogo por baixo. */
+
+.cortina {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  place-items: center;
+  gap: clamp(8px, 2vmin, 20px);
+  padding: clamp(16px, 4vmin, 48px);
+  padding-block-end: max(clamp(16px, 4vmin, 48px), calc(env(safe-area-inset-bottom) + 12px));
+  text-align: center;
+  background:
+    radial-gradient(70% 50% at 50% 38%, color-mix(in srgb, var(--color-mar-500) 42%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--color-mar-800) 0%, var(--color-mar-900) 100%);
+  color: var(--color-espuma);
+  /* Nenhum toque atravessa e nenhum gesto rola a tela por baixo. */
+  touch-action: none;
+  opacity: 0;
+  transition: opacity var(--anim-media, 420ms) ease-out;
+}
+.cortina[data-entrou="true"] {
+  opacity: 1;
+}
+
+.aceno {
+  align-self: end;
+  animation: acenar 1.6s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+@keyframes acenar {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+.frase {
+  margin: 0;
+  font-size: var(--texto-titulo);
+  font-weight: 800;
+  color: var(--color-areia);
+  text-wrap: balance;
+}
+
+/* Recado para o ADULTO. A criança não lê — ela ouviu o tchau. */
+.rodape {
+  margin: 0;
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--color-espuma) 62%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cortina {
+    transition: none;
+    opacity: 1;
+  }
+  .aceno {
+    animation: none;
+  }
+}

@@ -1,0 +1,19 @@
+# Jogo da Família — app privado de uma criança.
+#
+# Este deploy existe para caber num ícone na tela inicial de um tablet de casa.
+# Ele não é um site: não tem público, não tem conteúdo para buscar e a área dos
+# pais fala de uma criança específica. Por isso ele fica FORA de qualquer índice
+# de busca.
+#
+# `Disallow: /` barra o rastreamento. `Noindex` é honrado por parte dos robôs e
+# é declarado aqui de propósito — vale como intenção explícita mesmo onde não é
+# obedecido.
+#
+# O que NUNCA está aqui para ser indexado, de qualquer forma: fotos e vozes da
+# família e a arte importada pelo adulto. Nada disso vai para o servidor — vive
+# no IndexedDB do aparelho (ver src/lib/importarPasta.ts, .gitignore e
+# .vercelignore).
+
+User-agent: *
+Disallow: /
+Noindex: /

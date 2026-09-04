@@ -1,0 +1,26 @@
+# O que NUNCA sobe para o deploy.
+#
+# O .gitignore já barra a pasta `imagens/` num deploy vindo do Git (o arquivo
+# nem existe no commit). Este arquivo cobre o outro caminho: `vercel deploy`
+# rodado da máquina, que empacota o diretório de trabalho como ele está — aí a
+# pasta existe no disco e subiria sem esta linha.
+#
+# Por que importa: `imagens/personagens` guarda arte de terceiros e
+# `imagens/familia` guarda fotos de crianças. No tablet de casa isso é uso
+# privado; num link público seria redistribuição e exposição. O conteúdo entra
+# pelo painel dos pais (Importar imagens do aparelho) e vive no IndexedDB do
+# aparelho — ver src/lib/importarPasta.ts.
+imagens/
+
+# Ruído local que não faz falta no build.
+node_modules
+.next
+.git
+.DS_Store
+*.tsbuildinfo
+.env*
+
+# Ver .gitignore: `public/personagens/` é arte de terceiros copiada por engano
+# para dentro do que vai ao ar. Guarda permanente — sobrevive a alguém
+# recopiar a pasta.
+public/personagens/

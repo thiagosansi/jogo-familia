@@ -1,0 +1,50 @@
+/* Estilos de <Saudacao> (modo de inglês — "saudações e cortesia").
+   Mesmo vocabulário visual de objetos.module.css: contorno escuro grosso,
+   formas cheias, detalhes derivados de `currentColor` via color-mix — assim
+   o desenho lê bem tanto no fundo azul-escuro do mar (`--color-mar-900`)
+   quanto ampliado, sem precisar de uma segunda cor "fixa" competindo com o
+   token que a tela do jogo escolher. */
+
+.saudacao {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: visible;
+  /* Sombra sutil: sem ela, um desenho claro (sol amarelo, lua clara) some
+     contra o fundo do mar em telas com pouco contraste. */
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.4));
+}
+
+/* Contorno grosso em todas as formas: é o que garante a silhueta legível a
+   um metro de distância, no tablet, mesmo sem cor (daltonismo/impressão). */
+.contorno {
+  stroke: #04121f;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  paint-order: stroke fill markers;
+}
+
+/* Detalhes na própria cor escurecida (raios do sol, sobrancelhas da carinha
+   de "please") — nunca uma cor nova entrando por fora do token escolhido. */
+.detalhe {
+  stroke: color-mix(in srgb, currentColor 42%, #04121f);
+}
+.detalheCheio {
+  fill: color-mix(in srgb, currentColor 55%, #04121f);
+  stroke: none;
+}
+
+/* Mãos "de apoio" (a concha que segura o coração em thank you) um tom mais
+   escuras que o coração, para as duas formas não se fundirem numa só mancha. */
+.maosBase {
+  fill: color-mix(in srgb, currentColor 68%, #04121f);
+}
+
+/* Brilho do coração de "thankYou" — sempre claro, para o traço ficar
+   legível mesmo quando a cor-tema é escura. */
+.brilhoTraco {
+  stroke: var(--color-tinta, #2b1006);
+  stroke-width: 3;
+  opacity: 0.55;
+}

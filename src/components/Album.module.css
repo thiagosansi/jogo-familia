@@ -1,0 +1,105 @@
+/* Figurinhas do álbum.
+
+   O visual é o de um adesivo colado no vidro: moldura clara, leve inclinação e
+   sombra baixa. A inclinação vem do slot (determinística), não de sorteio —
+   recarregar a página tem que devolver o MESMO aquário. */
+
+/* ------------------------------------------------------------- no aquário */
+
+.vidro {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  /* Decoração colada: o toque da criança atravessa e chega nos moradores. */
+  pointer-events: none;
+}
+
+.colada {
+  position: absolute;
+  translate: -50% -50%;
+  rotate: var(--giro, 0deg);
+  --tam: clamp(46px, 9vmin, 84px);
+  inline-size: var(--tam);
+  block-size: var(--tam);
+}
+
+/* A última conquistada "cola" ao abrir o aquário — é o elo entre a rodada que
+   ela acabou de vencer e o bichinho que apareceu aqui. */
+.colando {
+  animation: colar 700ms cubic-bezier(0.22, 1.4, 0.4, 1) 1 backwards;
+}
+
+@keyframes colar {
+  from {
+    scale: 2.2;
+    rotate: calc(var(--giro, 0deg) - 25deg);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    scale: 1;
+    rotate: var(--giro, 0deg);
+    opacity: 1;
+  }
+}
+
+/* --------------------------------------------------------------- na grade */
+
+.grade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.itemGrade {
+  --tam: clamp(56px, 10vmin, 84px);
+  inline-size: var(--tam);
+  block-size: var(--tam);
+}
+
+/* -------------------------------------------------------------- o adesivo */
+
+.figurinha {
+  /* O <Personagem> tem piso de 88px (--toque-min) porque em geral é um ALVO de
+     toque. Aqui ele é desenho, não alvo: baixar o piso localmente é o que
+     deixa a figurinha caber. */
+  --toque-min: 0px;
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 100%;
+  padding: 8%;
+  border-radius: 26%;
+  background: color-mix(in srgb, var(--color-espuma) 92%, transparent);
+  box-shadow:
+    0 3px 0 0 color-mix(in srgb, var(--color-mar-900) 45%, transparent),
+    0 6px 14px rgb(0 0 0 / 0.28);
+  overflow: hidden;
+}
+.figurinha > * {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* Cardume do modo contar: a QUANTIDADE é o desenho (nunca o numeral). */
+.cardume {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 4%;
+}
+.cardume > * {
+  inline-size: 40%;
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .colando {
+    animation: none;
+  }
+}

@@ -1,0 +1,87 @@
+/* Gravador de voz. O aviso de microfone negado é parte do fluxo normal,
+   não um erro: por isso ele é âmbar (atenção), nunca vermelho (falha). */
+
+.caixa {
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 20%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-mar-900) 45%, transparent);
+}
+
+.titulo {
+  padding-inline: 6px;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.dica {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--color-espuma) 70%, transparent);
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.botao {
+  min-block-size: 56px;
+  min-inline-size: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 18px;
+  border: 2px solid color-mix(in srgb, var(--color-espuma) 35%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.botao:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.gravando {
+  border-color: transparent;
+  background: var(--color-coral-escuro);
+  color: var(--color-espuma);
+}
+
+.bolinha,
+.quadrado {
+  inline-size: 16px;
+  block-size: 16px;
+  background: var(--color-coral);
+}
+.bolinha {
+  border-radius: 50%;
+}
+.quadrado {
+  background: var(--color-espuma);
+  border-radius: 3px;
+}
+
+.estado {
+  display: block;
+  margin-block-start: 10px;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--color-espuma) 72%, transparent);
+}
+
+.aviso {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-areia) 20%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-areia) 55%, transparent);
+  color: var(--color-areia);
+  font-size: 0.9rem;
+  font-weight: 700;
+}

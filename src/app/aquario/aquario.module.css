@@ -1,0 +1,169 @@
+/* Aquário livre — modo sandbox: sem regra, sem fim, sem pontuação.
+   Tudo em CSS: nenhum game loop, nenhum requestAnimationFrame por bicho
+   (o tablet velho não aguentaria, e a bateria também não). */
+
+.tanque {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: clamp(8px, 3vmin, 40px);
+  padding: clamp(12px, 3vmin, 40px);
+  padding-block-start: max(clamp(12px, 3vmin, 40px), calc(env(safe-area-inset-top) + 8px));
+  /* Água mais clara que o fundo padrão: dá a sensação de "dentro do tanque". */
+  background:
+    radial-gradient(90% 60% at 50% 0%, color-mix(in srgb, var(--color-mar-500) 45%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--color-mar-700) 0%, var(--color-mar-900) 100%);
+  /* O aquário não rola: tudo cabe na tela, sempre. */
+  touch-action: manipulation;
+}
+
+/* Cada morador flutua com fase e duração próprias — a trajetória é a mesma,
+   mas nunca dois se movem juntos (o que pareceria um carrossel). */
+.morador {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  min-inline-size: var(--toque-min);
+  min-block-size: var(--toque-min);
+  animation: flutuar var(--dur, 12s) ease-in-out infinite;
+  animation-delay: var(--atraso, 0s);
+  will-change: transform;
+}
+.morador:active {
+  filter: brightness(1.15);
+}
+
+@keyframes flutuar {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-2.5deg);
+  }
+  25% {
+    transform: translate3d(5%, -7%, 0) rotate(2deg);
+  }
+  50% {
+    transform: translate3d(-4%, 4%, 0) rotate(-1deg);
+  }
+  75% {
+    transform: translate3d(3%, 7%, 0) rotate(2.5deg);
+  }
+}
+
+/* Bolhinhas de fundo. Puramente decorativas — nunca capturam toque. */
+.bolhas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bolhas span {
+  position: absolute;
+  inset-block-end: -12vmin;
+  inline-size: var(--tam, 3vmin);
+  block-size: var(--tam, 3vmin);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    color-mix(in srgb, var(--color-espuma) 55%, transparent),
+    color-mix(in srgb, var(--color-agua) 18%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--color-espuma) 22%, transparent);
+  animation: subir var(--dur, 14s) linear infinite;
+  animation-delay: var(--atraso, 0s);
+}
+
+@keyframes subir {
+  from {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(-115vh) translateX(var(--desvio, 4vmin));
+    opacity: 0;
+  }
+}
+
+/* Saída: canto de baixo, cor apagada, sem apelo infantil — e só abre no hold.
+   Um toque simples NÃO tira a criança do aquário (é o ponto do modo). */
+.saida {
+  position: fixed;
+  inset-block-end: max(10px, env(safe-area-inset-bottom));
+  inset-inline-start: max(10px, env(safe-area-inset-left));
+  inline-size: var(--toque-min);
+  block-size: var(--toque-min);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-mar-900) 62%, transparent);
+  color: color-mix(in srgb, var(--color-espuma) 45%, transparent);
+  cursor: pointer;
+  /* Sem isto o gesto de segurar vira scroll e dispara pointercancel. */
+  touch-action: none;
+}
+.saida[data-segurando="true"] {
+  color: var(--color-areia);
+  background: color-mix(in srgb, var(--color-mar-900) 80%, transparent);
+}
+.saida svg.icone {
+  position: relative;
+  inline-size: 38%;
+  block-size: auto;
+}
+
+/* Anel do hold: desenhado por strokeDashoffset (não por CSS animation), então
+   continua informando o adulto mesmo com prefers-reduced-motion. */
+.anel {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  transform: rotate(-90deg);
+}
+.anelTrilho,
+.anelProgresso {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+.anelTrilho {
+  stroke: color-mix(in srgb, var(--color-espuma) 16%, transparent);
+}
+.anelProgresso {
+  stroke: var(--color-areia);
+}
+
+/* Dica para o ADULTO (a criança não lê). Discreta, no canto oposto. */
+.dica {
+  position: fixed;
+  inset-block-end: max(10px, env(safe-area-inset-bottom));
+  inset-inline-end: max(10px, env(safe-area-inset-right));
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--color-espuma) 35%, transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .morador {
+    animation: none !important;
+  }
+  /* Bolhas só existem para o movimento: sem movimento, não existem. */
+  .bolhas {
+    display: none;
+  }
+}

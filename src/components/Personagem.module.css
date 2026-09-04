@@ -1,0 +1,138 @@
+/* Animações do <Personagem>. CSS puro — nenhuma lib de animação.
+   Durações saem dos tokens de globals.css (--anim-*), que já vêm zerados sob
+   prefers-reduced-motion; o bloco no fim do arquivo desliga as keyframes de
+   vez (animation-name: none), para o estado estático ser verificável. */
+
+.personagem {
+  --tamanho: var(--toque-min, 88px);
+  --cor-aro: var(--color-areia, #ffd166);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  inline-size: var(--tamanho);
+  /* Preserva o espaço do balanço/pulo sem empurrar o layout. */
+  padding: 4px;
+}
+
+.moldura {
+  inline-size: var(--tamanho);
+  block-size: var(--tamanho);
+  min-inline-size: var(--toque-min, 88px);
+  min-block-size: var(--toque-min, 88px);
+  border-radius: 50%;
+  overflow: hidden;
+  border: 6px solid var(--cor-aro);
+  background: radial-gradient(
+    120% 120% at 30% 20%,
+    color-mix(in srgb, var(--cor-aro) 35%, transparent),
+    color-mix(in srgb, var(--color-mar-700, #0e4d7a) 85%, black 15%)
+  );
+  box-shadow: 0 8px 0 0 color-mix(in srgb, var(--cor-aro) 45%, black 55%);
+  display: grid;
+  place-items: center;
+  /* A origem embaixo faz o balanço e o pulo parecerem "de pé no chão". */
+  transform-origin: 50% 85%;
+  will-change: transform;
+}
+
+.foto,
+.mascote {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nome {
+  font-size: clamp(0.9rem, 2.2vmin, 1.4rem);
+  font-weight: 800;
+  color: var(--color-espuma, #fdf6e3);
+  text-align: center;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 0.45);
+}
+
+/* ------------------------------------------------------------- estados */
+
+/* idle: balanço lento e contínuo — "vivo" sem pedir atenção. */
+.idle {
+  animation: balanco var(--anim-lenta, 6s) ease-in-out infinite;
+}
+
+/* pulo: chamar atenção para a alternativa certa / entrada em cena. */
+.pulo {
+  animation: pulo calc(var(--anim-media, 420ms) * 1.6) cubic-bezier(0.3, 1.4, 0.5, 1) 2;
+}
+
+/* fala: pulso de escala enquanto o áudio toca (loop; para quando o áudio para). */
+.fala {
+  animation: pulso calc(var(--anim-media, 420ms) * 1.1) ease-in-out infinite;
+}
+
+/* careta: reação engraçada do quaseLa. Nunca é punitiva — é palhaçada. */
+.careta {
+  animation: careta calc(var(--anim-media, 420ms) * 1.5) ease-in-out 2;
+}
+
+@keyframes balanco {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(3deg) translateY(-2%);
+  }
+}
+
+@keyframes pulo {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-18%) scale(1.06, 0.94);
+  }
+  70% {
+    transform: translateY(0) scale(0.96, 1.04);
+  }
+}
+
+@keyframes pulso {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes careta {
+  0%,
+  100% {
+    transform: rotate(0) scale(1);
+  }
+  20% {
+    transform: rotate(-9deg) scale(1.05, 0.95);
+  }
+  55% {
+    transform: rotate(9deg) scale(0.95, 1.05);
+  }
+  80% {
+    transform: rotate(-5deg) scale(1.02);
+  }
+}
+
+/* Acessibilidade: quem pediu menos movimento vê o personagem PARADO.
+   `animation-name: none` (e não só duração 0) para o estado ser verificável
+   com getComputedStyle. */
+@media (prefers-reduced-motion: reduce) {
+  .idle,
+  .pulo,
+  .fala,
+  .careta {
+    animation-name: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}

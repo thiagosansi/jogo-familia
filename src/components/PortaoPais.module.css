@@ -1,0 +1,74 @@
+/* Portão dos pais — visual deliberadamente adulto e sem graça: nada aqui deve
+   convidar a criança a insistir. Cores e medidas vêm dos tokens de globals.css. */
+
+.tela {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.explicacao {
+  margin: 0;
+  max-inline-size: 32ch;
+  font-size: clamp(1rem, 2.4vmin, 1.25rem);
+  color: color-mix(in srgb, var(--color-espuma) 78%, transparent);
+  text-wrap: balance;
+}
+
+.botao {
+  position: relative;
+  inline-size: clamp(var(--toque-min), 40vmin, 220px);
+  block-size: clamp(var(--toque-min), 40vmin, 220px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-mar-700) 70%, black 30%);
+  color: var(--color-espuma);
+  cursor: pointer;
+  /* Sem isto o gesto de segurar vira scroll no tablet e dispara pointercancel. */
+  touch-action: none;
+  transition: transform var(--anim-rapida) ease, background-color var(--anim-rapida) ease;
+}
+.botao[data-segurando] {
+  background: color-mix(in srgb, var(--color-mar-500) 65%, black 35%);
+  transform: scale(0.97);
+}
+
+/* O anel gira -90° para o progresso começar no topo. */
+.anel {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  transform: rotate(-90deg);
+}
+.anelTrilho,
+.anelProgresso {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+.anelTrilho {
+  stroke: color-mix(in srgb, var(--color-espuma) 18%, transparent);
+}
+.anelProgresso {
+  stroke: var(--color-areia);
+}
+
+.rotulo {
+  position: relative;
+  font-size: clamp(1.1rem, 3.4vmin, 1.9rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.voltar {
+  min-block-size: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 24px;
+  color: color-mix(in srgb, var(--color-espuma) 70%, transparent);
+  font-weight: 700;
+}

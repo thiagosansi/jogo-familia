@@ -1,0 +1,23 @@
+node_modules
+.next
+out
+build
+next-env.d.ts
+.DS_Store
+*.tsbuildinfo
+.env*
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+
+# Imagens que o adulto importa no aparelho (arte de terceiros e fotos da
+# família). Entram pelo painel dos pais direto no IndexedDB — nunca no
+# repositório, nunca no deploy. Ver .vercelignore e src/lib/importarPasta.ts.
+imagens/
+
+# Guarda permanente: `public/` é EXATAMENTE o que vai para o deploy público.
+# Arte de terceiros (Nickelodeon) e fotos de família não podem ser copiadas
+# para cá "só para testar" — já aconteceu uma vez. O caminho legítimo é o
+# painel dos pais (importação de pasta → IndexedDB do aparelho).
+public/personagens/
+.vercel
