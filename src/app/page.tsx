@@ -102,6 +102,48 @@ const MODOS: Modo[] = [
     ),
   },
   {
+    id: "memoria",
+    href: "/jogo/memoria",
+    rotulo: "Memória",
+    // Roxo: cor nova na paleta, escolhida para não repetir tom com os
+    // vizinhos (Animais é verde alga, Aquário é azul mar-500).
+    cor: "var(--color-anemona)",
+    icone: (
+      // Duas cartas, uma virada para baixo e outra mostrando um par — a
+      // metáfora do jogo sem depender de texto (a criança não lê).
+      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
+        <rect
+          x="8"
+          y="16"
+          width="44"
+          height="64"
+          rx="9"
+          fill="#0e4d7a"
+          stroke="#2b1006"
+          strokeWidth="7"
+          transform="rotate(-8 30 48)"
+        />
+        <circle cx="29" cy="47" r="10" fill="#3ddad7" transform="rotate(-8 30 48)" />
+        <rect
+          x="66"
+          y="16"
+          width="44"
+          height="64"
+          rx="9"
+          fill="#fdf6e3"
+          stroke="#2b1006"
+          strokeWidth="7"
+          transform="rotate(8 88 48)"
+        />
+        <g transform="rotate(8 88 48)">
+          <ellipse cx="85" cy="47" rx="15" ry="10" fill="#ff7a5c" />
+          <path d="M100 47l11-8v16z" fill="#ff7a5c" />
+          <circle cx="78" cy="44" r="2.6" fill="#2b1006" />
+        </g>
+      </svg>
+    ),
+  },
+  {
     id: "aquario",
     href: "/jogo/aquario",
     rotulo: "Aquário",

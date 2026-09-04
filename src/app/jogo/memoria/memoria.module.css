@@ -1,0 +1,277 @@
+/* Jogo da memória. Tudo em cima dos tokens de globals.css (--toque-min, --gap,
+   --anim-*, --raio), então `prefers-reduced-motion` desliga o movimento sem
+   precisar de exceção por regra. */
+
+/* Mesmo esqueleto do <Palco> (ver Palco.module.css): cabeçalho + tabuleiro +
+   feedback numa coluna que ocupa a tela toda. Não reusamos o <Palco> aqui
+   porque a grade dele é `auto-fit` — ela reflui sozinha conforme a largura, e
+   um jogo da memória PRECISA da grade fixa do nível (2x2, 3x2, 4x3): se as
+   colunas mudassem de tela para tela, a posição da carta — que é exatamente o
+   que a criança está memorizando — mudaria junto. */
+.tela {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, 16px);
+  min-block-size: 100dvh;
+  padding: clamp(12px, 2.5vmin, 32px);
+  padding-block-end: max(clamp(12px, 2.5vmin, 32px), env(safe-area-inset-bottom));
+}
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2vmin, 20px);
+  flex-wrap: wrap;
+}
+
+.pergunta {
+  margin: 0;
+  font-size: var(--texto-titulo, 2rem);
+  font-weight: 800;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--color-espuma, #fdf6e3);
+  text-shadow: 0 3px 6px rgb(0 0 0 / 0.4);
+}
+
+/* Botão de repetir a fala — mesmo visual e mesmo alvo de 88px do <Palco>. */
+.repetir {
+  inline-size: var(--toque-min, 88px);
+  block-size: var(--toque-min, 88px);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid color-mix(in srgb, var(--color-agua, #3ddad7) 70%, white 30%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-mar-700, #0e4d7a) 80%, black 20%);
+  color: var(--color-agua, #3ddad7);
+  cursor: pointer;
+  transition: transform var(--anim-rapida, 160ms) ease;
+}
+.repetir:active {
+  transform: scale(0.92);
+}
+.repetir svg {
+  inline-size: 46%;
+  block-size: auto;
+}
+.repetir[data-falando="true"] {
+  animation: brilho calc(var(--anim-media, 420ms) * 2) ease-in-out infinite;
+}
+
+@keyframes brilho {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-agua, #3ddad7) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--color-agua, #3ddad7) 0%, transparent);
+  }
+}
+
+/* Tabuleiro: grade FIXA em `--colunas` (2, 3 ou 4, vem do nível). É a única
+   grade do app que não é auto-fit — ver o comentário de `.tela`.
+   `max-inline-size` mantém o tabuleiro quadrado-ish no tablet deitado, em vez
+   de esticar as cartas até virarem tiras. */
+.tabuleiro {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--colunas, 2), 1fr);
+  gap: var(--gap, 16px);
+  align-content: center;
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  inline-size: 100%;
+  max-inline-size: min(100%, calc(var(--colunas, 2) * clamp(96px, 22vmin, 220px) + 3 * var(--gap, 16px)));
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+/* Uma carta. O alvo nunca desce de --toque-min (88px) e o quadrado é mantido
+   por `aspect-ratio` — carta retangular estraga a leitura do desenho. */
+.carta {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: clamp(96px, 22vmin, 220px);
+  min-inline-size: var(--toque-min, 88px);
+  min-block-size: var(--toque-min, 88px);
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  /* O flip acontece em 3D nas duas faces filhas. */
+  perspective: 900px;
+}
+
+/* As duas faces ocupam o mesmo espaço e giram juntas. */
+.faces {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform calc(var(--anim-media, 420ms) * 0.9) cubic-bezier(0.3, 0.9, 0.35, 1);
+}
+.carta[data-virada="true"] .faces {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(6px, 1.4vmin, 14px);
+  border-radius: var(--raio, 32px);
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+
+/* Costas da carta: neutra, igual em todas — nada aqui pode denunciar o que
+   tem do outro lado. Concha estilizada em gradiente, sem texto nem número. */
+.costas {
+  border: 5px solid color-mix(in srgb, var(--color-agua, #3ddad7) 55%, white 45%);
+  background:
+    radial-gradient(
+        circle at 50% 92%,
+        color-mix(in srgb, var(--color-agua, #3ddad7) 55%, transparent) 0 18%,
+        transparent 19%
+      ),
+    repeating-conic-gradient(
+      from 200deg at 50% 95%,
+      color-mix(in srgb, var(--color-mar-500, #1c7fb8) 85%, white 15%) 0deg 10deg,
+      var(--color-mar-700, #0e4d7a) 10deg 20deg
+    );
+  box-shadow: 0 10px 0 0 color-mix(in srgb, var(--color-mar-900, #041d33) 70%, black 30%);
+}
+
+/* Frente: o desenho. Cor de bolha neutra — quem carrega a cor é a figura. */
+.frente {
+  transform: rotateY(180deg);
+  border: 5px solid color-mix(in srgb, var(--color-espuma, #fdf6e3) 60%, transparent);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--color-mar-700, #0e4d7a) 88%, white 12%),
+    color-mix(in srgb, var(--color-mar-800, #062a4a) 80%, black 20%)
+  );
+  box-shadow: 0 10px 0 0 color-mix(in srgb, var(--color-mar-900, #041d33) 70%, black 30%);
+}
+
+.desenho {
+  inline-size: 100%;
+  block-size: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* <Personagem> traz o próprio círculo; aqui só limitamos o tamanho. */
+.retrato {
+  --tamanho: 100%;
+}
+
+.carta:active .faces {
+  transform: scale(0.94);
+}
+.carta[data-virada="true"]:active .faces {
+  transform: rotateY(180deg) scale(0.94);
+}
+
+/* Par achado: a carta fica para cima para sempre, com um brilho de acerto.
+   Não some e não muda de lugar — a criança precisa continuar vendo o que já
+   achou (é o "progresso" dela, no lugar de qualquer placar). */
+.carta[data-achada="true"] {
+  cursor: default;
+}
+.carta[data-achada="true"] .frente {
+  border-color: var(--color-alga, #2fbf71);
+  box-shadow: 0 10px 0 0 color-mix(in srgb, var(--color-alga, #2fbf71) 45%, black 55%);
+  animation: comemora calc(var(--anim-media, 420ms) * 1.4) ease-in-out 2;
+}
+
+@keyframes comemora {
+  0%,
+  100% {
+    transform: rotateY(180deg) scale(1);
+  }
+  50% {
+    transform: rotateY(180deg) scale(1.06);
+  }
+}
+
+/* Área de feedback: espaço reservado para nada saltar quando aparece. Mesma
+   medida do <Palco>. */
+.feedback {
+  min-block-size: clamp(56px, 12vmin, 110px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2vmin, 20px);
+  font-size: var(--texto-card, 1.5rem);
+  font-weight: 800;
+  text-align: center;
+  color: var(--color-areia, #ffd166);
+}
+.feedback[data-fase="completo"] {
+  color: var(--color-alga, #2fbf71);
+  animation: entrar var(--anim-media, 420ms) cubic-bezier(0.2, 1.5, 0.4, 1) 1;
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Landscape baixo (tablet deitado): cabeçalho encolhe para sobrar tabuleiro. */
+@media (orientation: landscape) and (max-height: 620px) {
+  .tela {
+    gap: clamp(6px, 1.5vmin, 14px);
+  }
+  .pergunta {
+    font-size: clamp(1.2rem, 3.4vmin, 2rem);
+  }
+  .feedback {
+    min-block-size: clamp(40px, 8vmin, 72px);
+  }
+}
+
+/* Sem movimento: a carta ainda VIRA (é a mecânica do jogo), só que sem o giro
+   3D — troca de face na hora. Mesma regra do resto do app: reduzir movimento
+   nunca pode custar informação. */
+@media (prefers-reduced-motion: reduce) {
+  .faces,
+  .carta[data-achada="true"] .frente,
+  .repetir[data-falando="true"],
+  .feedback[data-fase] {
+    transition: none !important;
+    animation: none !important;
+  }
+  .faces {
+    transform: none !important;
+  }
+  .costas {
+    visibility: visible;
+  }
+  .carta[data-virada="true"] .costas {
+    visibility: hidden;
+  }
+  .frente {
+    transform: none;
+    visibility: hidden;
+  }
+  .carta[data-virada="true"] .frente {
+    visibility: visible;
+  }
+}
