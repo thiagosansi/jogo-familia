@@ -17,7 +17,7 @@
  * decide qual `Blob` tocar é a página, olhando para `personagem.vozFesta`
  * (ou caindo para TTS) — este módulo só devolve texto.
  *
- * CINCO BARALHOS
+ * SEIS BARALHOS
  * ----------------
  *  1. `numeros`    — contar de 1 a 10; a rodada sorteia um SUBCONJUNTO do
  *                     pool (10 é mais do que a criança aguenta de uma vez).
@@ -34,6 +34,11 @@
  *  5. `cores`       — red/blue/yellow/green/purple. EXCEÇÃO INTENCIONAL à
  *                     regra "o inglês nunca chega sozinho" logo acima — ver
  *                     bloco dedicado antes de `montarRodadaCoresIngles`.
+ *  6. `frases`      — FASE 2, criança de 5 anos, frases curtas inteiras em
+ *                     en-US ("Touch the red fish!", "Where is the big blue
+ *                     fish?"). EXCEÇÃO DELIBERADA Nº 2, à regra "SÓ A
+ *                     PALAVRA" logo abaixo — ver bloco dedicado antes de
+ *                     `montarRodadaFrases`.
  *
  * LIMITAÇÃO CONHECIDA (família): `Personagem.papel` não guarda gênero — só
  * existe o papel `"irmao"` para irmãos/irmãs, sem distinguir menino de
@@ -93,7 +98,7 @@ function clampQtd(n: number): 2 | 3 | 4 {
   return Math.min(4, Math.max(2, Math.round(n))) as 2 | 3 | 4;
 }
 
-export type BaralhoIngles = "numeros" | "cotidiano" | "familia" | "saudacoes" | "cores";
+export type BaralhoIngles = "numeros" | "cotidiano" | "familia" | "saudacoes" | "cores" | "frases";
 
 export const BARALHOS_INGLES: readonly { readonly id: BaralhoIngles; readonly titulo: string }[] = [
   { id: "numeros", titulo: "Numbers" },
@@ -101,6 +106,7 @@ export const BARALHOS_INGLES: readonly { readonly id: BaralhoIngles; readonly ti
   { id: "familia", titulo: "Family" },
   { id: "saudacoes", titulo: "Hello & bye" },
   { id: "cores", titulo: "Colors" },
+  { id: "frases", titulo: "Sentences" },
 ];
 
 // ============================================================= 1. números
@@ -280,6 +286,11 @@ const PALAVRA_FORMA: Readonly<Record<FormaObjeto, string>> = {
   bolha: "bubble",
   peixe: "fish",
 };
+
+/** O substantivo em inglês de uma forma — usado por `cotidiano` e por `frases`. */
+export function palavraFormaIngles(forma: FormaObjeto): string {
+  return PALAVRA_FORMA[forma];
+}
 
 /** A cor exclusiva de cada forma, herdada da bijeção de `cores.ts`. */
 const COR_POR_FORMA = new Map<FormaObjeto, CorId>(CORES.map((c) => [c.forma, c.id]));
@@ -584,6 +595,11 @@ const PALAVRA_COR: Readonly<Record<CorId, string>> = {
   roxo: "purple",
 };
 
+/** O nome em inglês de uma cor — usado por `cores` e por `frases`. */
+export function palavraCorIngles(cor: CorId): string {
+  return PALAVRA_COR[cor];
+}
+
 export interface PalavraCor {
   readonly id: CorId;
   readonly palavra: string;
@@ -664,6 +680,149 @@ export function montarRodadaCoresIngles({
   };
 }
 
+// ============================================================== 6. frases
+
+/**
+ * EXCEÇÃO DELIBERADA Nº 2 — FASE 2 DO INGLÊS, APROVADA PELO DONO DO PRODUTO
+ * (não "consertar" depois sem combinar de novo).
+ *
+ * A regra "SÓ A PALAVRA" (topo do arquivo) e a bijeção cor↔forma de
+ * `cores.ts` foram desenhadas para os 3 anos — a criança tem 5 anos agora.
+ * SÓ este baralho fala frases curtas inteiras em en-US ("Touch the red
+ * fish!", "Where is the big blue fish?") em vez de só a palavra-alvo: a fase
+ * 2 é sobre discriminar por ATRIBUTO (cor, depois cor+tamanho), não sobre
+ * adquirir uma palavra nova isolada — e a criança já entende frase.
+ *
+ * Como no baralho `cores`, a FORMA fica FIXA dentro de uma rodada — sorteada
+ * uma vez (`proximaFormaFrase`, não repete a do `anterior`) — e todas as
+ * alternativas desenham essa mesma forma. A diferença: aqui a forma NÃO
+ * exclui a bijetada de `cores.ts` (aquela exclusão só faz sentido quando a
+ * ÚNICA variável é a cor). `ITENS_FRASE` cruza TODAS as cores com TODAS as
+ * formas e os dois tamanhos — a bijeção de `cores.ts` simplesmente não se
+ * aplica a este catálogo, que é próprio deste baralho.
+ *
+ * NÍVEL 1 varia só a cor (tamanho sempre `"big"`): "Touch the red fish!".
+ * NÍVEL 2 varia cor E tamanho: "Where is the big blue fish?".
+ *
+ * O alvo é único no par (cor, tamanho) dentro de uma rodada de graça: o `id`
+ * de `ItemFrase` é `${cor}-${forma}-${tamanho}`, a forma é a MESMA para toda
+ * a rodada, então dois itens do pool só têm o mesmo id se cor E tamanho
+ * também baterem — qualquer distrator que `montarAlternativas` sorteie já
+ * difere do alvo em pelo menos um atributo perguntado, sem precisar de
+ * filtro extra (mesma garantia estrutural que os outros baralhos usam).
+ *
+ * COMEMORAÇÃO: a festa NÃO repete a frase-carregadora ("Touch the.../Where
+ * is the...") — vira ruído, mesma lógica de `festaDaPalavra` no topo do
+ * arquivo. Ela repete só as PALAVRAS-CHAVE que a rodada pediu: cor + forma no
+ * nível 1 ("Red fish!"), tamanho + cor + forma no nível 2 ("Big blue
+ * fish!") — ver `festaFrase`.
+ */
+
+export type TamanhoIngles = "big" | "small";
+
+const TAMANHOS_INGLES: readonly TamanhoIngles[] = ["big", "small"];
+
+export interface ItemFrase {
+  readonly id: `${CorId}-${FormaObjeto}-${TamanhoIngles}`;
+  readonly cor: CorId;
+  readonly forma: FormaObjeto;
+  readonly tamanho: TamanhoIngles;
+}
+
+function idItemFrase(cor: CorId, forma: FormaObjeto, tamanho: TamanhoIngles): ItemFrase["id"] {
+  return `${cor}-${forma}-${tamanho}`;
+}
+
+/** Produto cartesiano cor × forma × tamanho — ver exceção documentada acima. */
+export const ITENS_FRASE: readonly ItemFrase[] = IDS_COR.flatMap((cor) =>
+  IDS_FORMA.flatMap((forma) =>
+    TAMANHOS_INGLES.map((tamanho): ItemFrase => ({ id: idItemFrase(cor, forma, tamanho), cor, forma, tamanho })),
+  ),
+);
+
+const ITEM_FRASE_POR_ID = new Map<string, ItemFrase>(ITENS_FRASE.map((i) => [i.id, i]));
+
+export function itemFrasePorId(id: string): ItemFrase {
+  const achado = ITEM_FRASE_POR_ID.get(id);
+  if (!achado) throw new Error(`Item de frase desconhecido no baralho frases: ${id}`);
+  return achado;
+}
+
+/** Sorteia a forma da rodada evitando repetir a do `anterior` — mesmo espírito de `formaDaRodada`. */
+function proximaFormaFrase(anterior: FormaObjeto | null | undefined, sortear: Sorteio): FormaObjeto {
+  const candidatas = IDS_FORMA.filter((f) => f !== anterior);
+  const pool = candidatas.length > 0 ? candidatas : IDS_FORMA;
+  return embaralhar(pool, sortear)[0];
+}
+
+function itensDaForma(forma: FormaObjeto, tamanhos: readonly TamanhoIngles[]): readonly ItemFrase[] {
+  return ITENS_FRASE.filter((item) => item.forma === forma && tamanhos.includes(item.tamanho));
+}
+
+/** "Touch the red fish!" (nível 1) / "Where is the big blue fish?" (nível 2). */
+function perguntaFrase(item: ItemFrase, nivel: 1 | 2): string {
+  const cor = palavraCorIngles(item.cor);
+  const forma = palavraFormaIngles(item.forma);
+  return nivel === 1 ? `Touch the ${cor} ${forma}!` : `Where is the ${item.tamanho} ${cor} ${forma}?`;
+}
+
+/** "Red fish!" (nível 1) / "Big blue fish!" (nível 2) — só as palavras-chave, ver bloco acima. */
+function festaFrase(item: ItemFrase, nivel: 1 | 2): string {
+  const cor = palavraCorIngles(item.cor);
+  const forma = palavraFormaIngles(item.forma);
+  const chave = nivel === 1 ? `${cor} ${forma}` : `${item.tamanho} ${cor} ${forma}`;
+  return `${maiuscula(chave)}!`;
+}
+
+export interface RodadaFrases {
+  readonly pergunta: string;
+  readonly festa: string;
+  readonly alternativas: readonly ItemFrase["id"][];
+  readonly correta: ItemFrase["id"];
+  /** Conteúdo de cada alternativa, na mesma ordem. */
+  readonly itens: readonly ItemFrase[];
+  /** A MESMA forma para todas as alternativas desta rodada — ver exceção
+   * documentada acima. */
+  readonly forma: FormaObjeto;
+  /** Quais atributos esta rodada pede — nível 1 só cor, nível 2 cor+tamanho. */
+  readonly atributos: readonly ("cor" | "tamanho")[];
+}
+
+export interface OpcoesRodadaFrases {
+  qtd: number;
+  nivel: 1 | 2;
+  /** Forma da rodada anterior deste baralho — não repete duas vezes seguidas. */
+  anterior?: FormaObjeto | null;
+  sortear?: Sorteio;
+}
+
+export function montarRodadaFrases({ qtd, nivel, anterior = null, sortear = Math.random }: OpcoesRodadaFrases): RodadaFrases {
+  const forma = proximaFormaFrase(anterior, sortear);
+  const tamanhosDaRodada: readonly TamanhoIngles[] = nivel === 1 ? ["big"] : TAMANHOS_INGLES;
+  const pool = itensDaForma(forma, tamanhosDaRodada);
+
+  const alvo = embaralhar(pool, sortear)[0];
+  const poolIds = pool.map((item) => item.id);
+  const alternativas = montarAlternativas(poolIds, alvo.id, clampQtd(qtd), sortear) as ItemFrase["id"][];
+
+  // Rede de segurança (mesmo espírito dos outros baralhos): o pool já
+  // garante ids únicos por construção, mas se alguém duplicar uma entrada em
+  // `ITENS_FRASE` a rodada morre aqui, não na frente da criança.
+  if (new Set(alternativas).size !== alternativas.length) {
+    throw new Error("Rodada de frases com duas alternativas repetidas.");
+  }
+
+  return {
+    pergunta: perguntaFrase(alvo, nivel),
+    festa: festaFrase(alvo, nivel),
+    alternativas,
+    correta: alvo.id,
+    itens: alternativas.map((id) => itemFrasePorId(id)),
+    forma,
+    atributos: nivel === 1 ? ["cor"] : ["cor", "tamanho"],
+  };
+}
+
 // ------------------------------------------------------------ invariantes
 
 /**
@@ -722,6 +881,25 @@ export function validarCatalogoIngles(): true {
   // alvo (ver `formaDaRodada`) — senão a rodada nunca conseguiria sortear.
   if (IDS_FORMA.length < 2) {
     throw new Error("Catálogo de formas pequeno demais para excluir a forma bijetada à cor-alvo em cores.");
+  }
+
+  validarIdsUnicos("frases", ITENS_FRASE);
+  const tamanhoEsperado = IDS_COR.length * IDS_FORMA.length * TAMANHOS_INGLES.length;
+  if (ITENS_FRASE.length !== tamanhoEsperado) {
+    throw new Error(
+      `Baralho de frases precisa cruzar toda cor × forma × tamanho (esperado ${tamanhoEsperado}, tinha ${ITENS_FRASE.length}).`,
+    );
+  }
+  const idsCorFrasesValidos = new Set<string>(IDS_COR);
+  const idsFormaFrasesValidos = new Set<string>(IDS_FORMA);
+  const tamanhosValidos = new Set<string>(TAMANHOS_INGLES);
+  for (const item of ITENS_FRASE) {
+    if (!idsCorFrasesValidos.has(item.cor)) throw new Error(`Frases referencia cor inexistente: ${item.cor}`);
+    if (!idsFormaFrasesValidos.has(item.forma)) throw new Error(`Frases referencia forma inexistente: ${item.forma}`);
+    if (!tamanhosValidos.has(item.tamanho)) throw new Error(`Frases referencia tamanho inexistente: ${item.tamanho}`);
+    if (item.id !== idItemFrase(item.cor, item.forma, item.tamanho)) {
+      throw new Error(`Item de frase com id inconsistente com seus atributos: ${item.id}`);
+    }
   }
 
   return true;

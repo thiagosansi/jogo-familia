@@ -1,11 +1,19 @@
 "use client";
 
 /**
- * /jogo/ingles — mini-jogo "inglês" (eixo `ingles`), cinco baralhos num só
+ * /jogo/ingles — mini-jogo "inglês" (eixo `ingles`), seis baralhos num só
  * fluxo: números (1-10), cotidiano (bichos/formas já conhecidos), família
- * (fotos já cadastradas), saudações e cores (red/blue/yellow/green/purple).
- * `<Palco>`/`useRodada` (`@/game/useRodada`) exatamente como os outros
- * mini-jogos.
+ * (fotos já cadastradas), saudações, cores (red/blue/yellow/green/purple) e
+ * frases (fase 2, ver abaixo). `<Palco>`/`useRodada` (`@/game/useRodada`)
+ * exatamente como os outros mini-jogos.
+ *
+ * BARALHO `frases` — FASE 2 DO INGLÊS (criança de 5 anos, decisão do dono do
+ * produto): ao contrário dos outros cinco, a pergunta é uma FRASE curta
+ * inteira em en-US ("Touch the red fish!", "Where is the big blue fish?"),
+ * não só a palavra-alvo — a exceção está documentada no cabeçalho de
+ * `@/game/modos/ingles`, antes de `montarRodadaFrases`. `palavraAlvo` (usada
+ * para repetir por TTS depois da voz gravada da família) devolve a FRASE
+ * inteira para este baralho, não uma palavra — ver o `switch` abaixo.
  *
  * TELA DE ESCOLHA — DECISÃO REVERTIDA (não mexer sem combinar com o dono do
  * projeto): uma versão anterior deste comentário afirmava "SEM tela de
@@ -108,20 +116,24 @@ import {
   type FalaContagem,
   type FaseContagem,
 } from "@/game/modos/contar";
-import { peca, type CorId } from "@/game/modos/cores";
+import { peca, type CorId, type FormaObjeto } from "@/game/modos/cores";
 import {
   BARALHOS_INGLES,
   corInglesPorId,
   criarContagemNumeroIngles,
   criarSorteio,
   IDS_COR_INGLES,
+  itemFrasePorId,
   montarRodadaCoresIngles,
   montarRodadaCotidiano,
   montarRodadaFamiliaIngles,
+  montarRodadaFrases,
   montarRodadaNumeros,
   montarRodadaSaudacoes,
   numeroPorId,
+  palavraCorIngles,
   palavraCotidianoPorId,
+  palavraFormaIngles,
   palavrasFamiliaJogaveis,
   saudacaoPorId,
   type BaralhoIngles,
@@ -131,6 +143,7 @@ import {
   type RodadaCoresIngles,
   type RodadaCotidiano,
   type RodadaFamiliaIngles,
+  type RodadaFrases,
   type RodadaNumeros,
   type RodadaSaudacoes,
 } from "@/game/modos/ingles";
@@ -174,13 +187,17 @@ export default function PaginaIngles() {
 
 // ---------------------------------------------------------------- baralhos
 
-/** Cada baralho lembra o próprio último alvo — não repete dentro dele mesmo. */
+/** Cada baralho lembra o próprio último alvo — não repete dentro dele mesmo.
+ * `frases` guarda a FORMA da rodada anterior (não um id de item): é o que
+ * `montarRodadaFrases` usa para não repetir a forma duas vezes seguidas —
+ * ver o cabeçalho dela em `@/game/modos/ingles`. */
 interface Anteriores {
   numeros: IdNumero | null;
   cotidiano: string | null;
   familia: IdPalavraFamilia | null;
   saudacoes: IdSaudacao | null;
   cores: CorId | null;
+  frases: FormaObjeto | null;
 }
 
 const SEM_ANTERIORES: Anteriores = {
@@ -189,6 +206,7 @@ const SEM_ANTERIORES: Anteriores = {
   familia: null,
   saudacoes: null,
   cores: null,
+  frases: null,
 };
 
 type Passo =
@@ -196,7 +214,8 @@ type Passo =
   | { n: number; baralho: "cotidiano"; anteriores: Anteriores; rodada: RodadaCotidiano }
   | { n: number; baralho: "familia"; anteriores: Anteriores; rodada: RodadaFamiliaIngles<Pessoa> }
   | { n: number; baralho: "saudacoes"; anteriores: Anteriores; rodada: RodadaSaudacoes }
-  | { n: number; baralho: "cores"; anteriores: Anteriores; rodada: RodadaCoresIngles };
+  | { n: number; baralho: "cores"; anteriores: Anteriores; rodada: RodadaCoresIngles }
+  | { n: number; baralho: "frases"; anteriores: Anteriores; rodada: RodadaFrases };
 
 /**
  * Escolhe o próximo baralho (nunca repete o `anterior.baralho`, a menos que
@@ -246,6 +265,14 @@ function construirPasso(
       const rodada = montarRodadaCoresIngles({ qtd, anterior: anteriores.cores, sortear });
       return { n, baralho, rodada, anteriores: { ...anteriores, cores: rodada.correta } };
     }
+    case "frases": {
+      // Nível 1 (só cor) com poucas alternativas na tela, nível 2 (cor +
+      // tamanho) quando a dificuldade já deixa 3+ — mesmo gatilho usado nos
+      // outros passos "5 anos" do plano (`qtd >= 3 ? 2 : 1`).
+      const nivel = qtd >= 3 ? 2 : 1;
+      const rodada = montarRodadaFrases({ qtd, nivel, anterior: anteriores.frases, sortear });
+      return { n, baralho, rodada, anteriores: { ...anteriores, frases: rodada.forma } };
+    }
     case "familia": {
       const rodada = montarRodadaFamiliaIngles({ fichas: elenco, qtd, anterior: anteriores.familia, sortear });
       if (!rodada) {
@@ -283,7 +310,12 @@ function montarPassoParaEscolha(
   return construirPasso(escolha, n, elenco, anteriores, qtd, sortear);
 }
 
-/** A palavra alvo em inglês desta rodada (para repetir por TTS após a voz gravada). */
+/**
+ * A palavra alvo em inglês desta rodada (para repetir por TTS após a voz
+ * gravada). No baralho `frases` (fase 2, ver cabeçalho do arquivo) não há
+ * "a palavra": a pergunta inteira JÁ É a frase-alvo em en-US, então é ela
+ * que se repete — nunca só a cor ou só a forma isoladas.
+ */
 function palavraAlvo(passo: Passo): string {
   switch (passo.baralho) {
     case "numeros":
@@ -296,12 +328,23 @@ function palavraAlvo(passo: Passo): string {
       return corInglesPorId(passo.rodada.correta).palavra;
     case "familia":
       return passo.rodada.palavra.palavra;
+    case "frases":
+      return passo.rodada.pergunta;
   }
 }
 
-/** Id da figurinha ("ingles-<id da palavra>", nunca o id da foto/personagem). */
+/**
+ * Id da figurinha ("ingles-<id da palavra>", nunca o id da foto/personagem).
+ * `frases` usa "frase-<id do item>" como chave — vira "ingles-frase-<id>" em
+ * `idFigurinha`, que não tem tradução própria em `recompensa.ts` (regra
+ * "nunca lança": qualquer prefixo "ingles-" sem tradução cai no mascote do
+ * álbum, ver `desenhoDaFigurinha`) — aceitável, a novidade da fase 2 é a
+ * frase falada, não uma figurinha nova desenhada.
+ */
 function idPalavraDoPasso(passo: Passo): string {
-  return passo.baralho === "familia" ? passo.rodada.palavra.id : passo.rodada.correta;
+  if (passo.baralho === "familia") return passo.rodada.palavra.id;
+  if (passo.baralho === "frases") return `frase-${passo.rodada.correta}`;
+  return passo.rodada.correta;
 }
 
 /** Rótulo acessível de uma alternativa (leitor de tela do adulto). */
@@ -318,6 +361,10 @@ function rotuloAlternativa(passo: Passo, id: string): string {
     case "familia": {
       const pessoa = passo.rodada.pessoas.find((p) => p.id === id);
       return pessoa?.nome?.trim() || "family";
+    }
+    case "frases": {
+      const item = itemFrasePorId(id);
+      return `${item.tamanho} ${palavraCorIngles(item.cor)} ${palavraFormaIngles(item.forma)}`;
     }
   }
 }
@@ -359,6 +406,7 @@ const ESCOLHAS_VALIDAS: readonly EscolhaIngles[] = [
   "familia",
   "saudacoes",
   "cores",
+  "frases",
 ];
 
 // -------------------------------------------------------------------- jogo
@@ -840,6 +888,20 @@ const OPCAO_CORES: OpcaoIngles = {
   ),
 };
 
+const OPCAO_FRASES: OpcaoIngles = {
+  id: "frases",
+  rotulo: "Sentences",
+  cor: "var(--color-mar-700)",
+  icone: (
+    // Um peixinho grande e um pequeno, MESMA cor — o ícone já ensaia a pista
+    // nova da fase 2 (tamanho), sem inventar um desenho que a rodada não usa.
+    <span className={estilos.iconeFrases} aria-hidden="true">
+      <ObjetoMar forma="peixe" cor="var(--color-espuma)" className={estilos.pontoFraseGrande} />
+      <ObjetoMar forma="peixe" cor="var(--color-espuma)" className={estilos.pontoFrasePequena} />
+    </span>
+  ),
+};
+
 /** Só chamada quando `podeFamilia` é `true` — sempre acha um representante. */
 function opcaoFamilia(representante: Pessoa): OpcaoIngles {
   return {
@@ -888,6 +950,7 @@ function TelaEscolhaExercicio({
     ...(representante ? [opcaoFamilia(representante)] : []),
     OPCAO_SAUDACOES,
     OPCAO_CORES,
+    OPCAO_FRASES,
   ];
 
   return (
@@ -1001,6 +1064,23 @@ function ConteudoAlternativa({
     return (
       <span className={classeAnimada}>
         <ObjetoMar forma={passo.rodada.forma} cor={peca(id).hex} />
+      </span>
+    );
+  }
+
+  if (passo.baralho === "frases") {
+    // MESMA forma para toda a rodada (ver exceção documentada em
+    // `montarRodadaFrases`) — a cor e o tamanho do desenho são a pista.
+    // `.grande`/`.pequeno` (ingles.module.css) redimensionam o `<ObjetoMar>`
+    // dentro da bolha: "small" ~55% da largura, "big" preenche como sempre.
+    const item = itemFrasePorId(id);
+    return (
+      <span className={classeAnimada}>
+        <ObjetoMar
+          forma={item.forma}
+          cor={peca(item.cor).hex}
+          className={item.tamanho === "small" ? estilos.pequeno : estilos.grande}
+        />
       </span>
     );
   }

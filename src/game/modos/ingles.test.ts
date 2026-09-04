@@ -26,20 +26,25 @@ import {
   IDS_COTIDIANO,
   IDS_NUMERO,
   IDS_SAUDACAO,
+  ITENS_FRASE,
   NUMEROS_INGLES,
   SAUDACOES_INGLES,
   TAMANHO_SUBCONJUNTO_NUMEROS,
   corInglesPorId,
   criarContagemNumeroIngles,
   criarSorteio,
+  itemFrasePorId,
   montarRodadaCoresIngles,
   montarRodadaCotidiano,
   montarRodadaFamiliaIngles,
+  montarRodadaFrases,
   montarRodadaNumeros,
   montarRodadaSaudacoes,
   numeroPorId,
+  palavraCorIngles,
   palavraCotidianoPorId,
   palavraFamiliaPorId,
+  palavraFormaIngles,
   palavrasFamiliaJogaveis,
   podeJogarFamiliaIngles,
   saudacaoPorId,
@@ -56,11 +61,11 @@ function ficha(id: string, nome: string, papel: FichaFamiliarIngles["papel"]): F
 
 // -------------------------------------------------------------- catálogo
 
-test("validarCatalogoIngles passa e os 4 baralhos existem com ids estáveis", () => {
+test("validarCatalogoIngles passa e os 6 baralhos existem com ids estáveis", () => {
   assert.equal(validarCatalogoIngles(), true);
   assert.deepEqual(
     BARALHOS_INGLES.map((b) => b.id),
-    ["numeros", "cotidiano", "familia", "saudacoes", "cores"],
+    ["numeros", "cotidiano", "familia", "saudacoes", "cores", "frases"],
   );
 
   assert.equal(NUMEROS_INGLES.length, 10);
@@ -73,6 +78,7 @@ test("validarCatalogoIngles passa e os 4 baralhos existem com ids estáveis", ()
   assert.ok(FAMILIA_INGLES.length === 4);
   assert.ok(SAUDACOES_INGLES.length === 4);
   assert.ok(CORES_INGLES.length === 5);
+  assert.equal(ITENS_FRASE.length, 5 * 5 * 2, "frases: precisa cruzar toda cor x forma x tamanho");
 
   // ids são strings estáveis e não vazias, sem duplicar entre si.
   for (const [nome, itens] of [
@@ -81,6 +87,7 @@ test("validarCatalogoIngles passa e os 4 baralhos existem com ids estáveis", ()
     ["familia", FAMILIA_INGLES],
     ["saudacoes", SAUDACOES_INGLES],
     ["cores", CORES_INGLES],
+    ["frases", ITENS_FRASE],
   ] as const) {
     const ids = itens.map((i) => i.id);
     assert.equal(new Set(ids).size, ids.length, `${nome}: ids duplicados`);
@@ -416,4 +423,113 @@ test("cores: figurinha usa o prefixo 'ingles-' + id da palavra (coerente com PRE
   const sortear = criarSorteio(11);
   const r = montarRodadaCoresIngles({ qtd: 2, sortear });
   assert.ok(IDS_COR_INGLES.includes(r.correta));
+});
+
+// ------------------------------------------------------------- frases (fase 2)
+
+test("frases: rodada nunca repete alternativa e a correta está nela (nível 1 e nível 2)", () => {
+  checarRodadasValidas("frases nível 1", (qtd, sortear) => montarRodadaFrases({ qtd, nivel: 1, sortear }));
+  checarRodadasValidas("frases nível 2", (qtd, sortear) => montarRodadaFrases({ qtd, nivel: 2, sortear }));
+});
+
+test("frases: palavras de cor e forma vêm dos catálogos existentes (CORES_INGLES/PALAVRA_FORMA)", () => {
+  assert.equal(palavraCorIngles("vermelho"), "red");
+  assert.equal(palavraCorIngles("azul"), "blue");
+  assert.equal(palavraFormaIngles("peixe"), "fish");
+  assert.equal(palavraFormaIngles("concha"), "shell");
+});
+
+test("frases: nível 1 — todas as alternativas têm o mesmo tamanho ('big') e cores distintas", () => {
+  for (const semente of SEMENTES) {
+    const sortear = criarSorteio(semente);
+    for (let i = 0; i < 30; i++) {
+      const r = montarRodadaFrases({ qtd: 4, nivel: 1, sortear });
+      assert.deepEqual(r.atributos, ["cor"]);
+      const itens = r.alternativas.map((id) => itemFrasePorId(id));
+      for (const item of itens) {
+        assert.equal(item.tamanho, "big", `nível 1: item com tamanho != big (${item.id})`);
+        assert.equal(item.forma, r.forma, `nível 1: item com forma != r.forma (${item.id})`);
+      }
+      const cores = itens.map((item) => item.cor);
+      assert.equal(new Set(cores).size, cores.length, "nível 1: duas alternativas com a mesma cor");
+    }
+  }
+});
+
+test("frases: nível 2 — o alvo é único no par (cor, tamanho) dentro da rodada", () => {
+  for (const semente of SEMENTES) {
+    const sortear = criarSorteio(semente);
+    for (let i = 0; i < 30; i++) {
+      const r = montarRodadaFrases({ qtd: 4, nivel: 2, sortear });
+      assert.deepEqual(r.atributos, ["cor", "tamanho"]);
+      const itens = r.alternativas.map((id) => itemFrasePorId(id));
+      for (const item of itens) {
+        assert.equal(item.forma, r.forma, `nível 2: item com forma != r.forma (${item.id})`);
+      }
+      const pares = itens.map((item) => `${item.cor}:${item.tamanho}`);
+      assert.equal(new Set(pares).size, pares.length, "nível 2: dois itens com o mesmo par (cor, tamanho)");
+      const alvo = itemFrasePorId(r.correta);
+      assert.equal(pares.filter((p) => p === `${alvo.cor}:${alvo.tamanho}`).length, 1, "alvo não é único no par");
+    }
+  }
+});
+
+test("frases: ids das alternativas são únicos e vêm do catálogo (ITENS_FRASE)", () => {
+  const sortear = criarSorteio(2026);
+  for (const nivel of [1, 2] as const) {
+    for (let i = 0; i < 30; i++) {
+      const r = montarRodadaFrases({ qtd: 4, nivel, sortear });
+      assert.equal(new Set(r.alternativas).size, r.alternativas.length);
+      for (const id of r.alternativas) assert.ok(ITENS_FRASE.some((item) => item.id === id));
+    }
+  }
+});
+
+test("frases: não repete a forma da rodada anterior deste baralho", () => {
+  for (const semente of SEMENTES) {
+    const sortear = criarSorteio(semente);
+    let anterior: ReturnType<typeof montarRodadaFrases>["forma"] | null = null;
+    for (let i = 0; i < 20; i++) {
+      const r = montarRodadaFrases({ qtd: 3, nivel: i % 2 === 0 ? 1 : 2, anterior, sortear });
+      if (anterior) assert.notEqual(r.forma, anterior, `semente ${semente}: repetiu a forma da rodada anterior`);
+      anterior = r.forma;
+    }
+  }
+});
+
+test("frases: pergunta e festa — nível 1 fala só cor+forma, nível 2 fala tamanho+cor+forma", () => {
+  const sortear = criarSorteio(20260904);
+  for (let i = 0; i < 15; i++) {
+    const r1 = montarRodadaFrases({ qtd: 3, nivel: 1, sortear });
+    const alvo1 = itemFrasePorId(r1.correta);
+    assert.equal(r1.pergunta, `Touch the ${palavraCorIngles(alvo1.cor)} ${palavraFormaIngles(alvo1.forma)}!`);
+    assert.ok(!r1.festa.toLowerCase().startsWith("touch"), "festa não deveria repetir a frase-carregadora");
+
+    const r2 = montarRodadaFrases({ qtd: 3, nivel: 2, sortear });
+    const alvo2 = itemFrasePorId(r2.correta);
+    assert.equal(
+      r2.pergunta,
+      `Where is the ${alvo2.tamanho} ${palavraCorIngles(alvo2.cor)} ${palavraFormaIngles(alvo2.forma)}?`,
+    );
+    assert.ok(!r2.festa.toLowerCase().startsWith("where"), "festa não deveria repetir a frase-carregadora");
+  }
+});
+
+test("frases: determinismo — mesma semente produz a mesma sequência de rodadas", () => {
+  const passos = (sortear: ReturnType<typeof criarSorteio>) =>
+    Array.from({ length: 8 }, (_, i) => montarRodadaFrases({ qtd: 3, nivel: i % 2 === 0 ? 1 : 2, sortear }));
+
+  for (const semente of SEMENTES) {
+    const a = passos(criarSorteio(semente));
+    const b = passos(criarSorteio(semente));
+    assert.deepEqual(
+      a.map((r) => ({ correta: r.correta, alternativas: r.alternativas, forma: r.forma })),
+      b.map((r) => ({ correta: r.correta, alternativas: r.alternativas, forma: r.forma })),
+      `semente ${semente}: rodadas divergiram com a mesma semente`,
+    );
+  }
+});
+
+test("frases: id desconhecido lança", () => {
+  assert.throws(() => itemFrasePorId("nao-existe"), /Item de frase desconhecido/);
 });
