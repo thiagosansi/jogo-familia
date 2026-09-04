@@ -168,6 +168,35 @@ const MODOS: Modo[] = [
     ),
   },
   {
+    id: "letras",
+    href: "/jogo/letras",
+    rotulo: "Letras",
+    // Laranja tangerina: cor nova na paleta (mesma justificativa do
+    // coral-escuro do Inglês, logo abaixo). O card nasceu lilás, com o mesmo
+    // hex do roxo anêmona já usado por Números/Memória — duas cores iguais
+    // com nomes diferentes. Trocado por um matiz inédito na paleta, que não
+    // repete tom com os vizinhos na grade (Animais em `--color-alga`,
+    // Aquário em `--color-mar-500`) nem com o roxo dos outros cards.
+    cor: "var(--color-tangerina)",
+    icone: (
+      // Blocos de alfabeto (brinquedo reconhecível mesmo sem ler): dois
+      // cubos com um glifo grande cada — "A" e "B" — a criança que ainda não
+      // lê reconhece a FORMA do brinquedo; o glifo é reforço para quem já
+      // está aprendendo a letra (o mesmo espírito do `<Album>`: a letra É o
+      // desenho no modo "Letras", não um numeral proibido).
+      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
+        <rect x="10" y="20" width="52" height="52" rx="10" fill="#fdf6e3" stroke="#2b1006" strokeWidth="6" transform="rotate(-6 36 46)" />
+        <text x="36" y="46" transform="rotate(-6 36 46)" textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-sans)" fontWeight="800" fontSize="34" fill="#2b1006">
+          A
+        </text>
+        <rect x="58" y="26" width="52" height="52" rx="10" fill="#ffd166" stroke="#2b1006" strokeWidth="6" transform="rotate(7 84 52)" />
+        <text x="84" y="52" transform="rotate(7 84 52)" textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-sans)" fontWeight="800" fontSize="34" fill="#2b1006">
+          B
+        </text>
+      </svg>
+    ),
+  },
+  {
     id: "ingles",
     href: "/jogo/ingles",
     rotulo: "Inglês",

@@ -25,8 +25,16 @@
      paleta já era cartão de algum modo, e `.card-modo` escreve o rótulo em
      `--color-tinta` (marrom escuro) — num token escuro como `--color-mar-700`
      o rótulo e o desenho sumiam no fundo do próprio cartão. Mesma situação
-     que criou `--color-coral-escuro` para o cartão "Inglês". */
+     que criou `--color-coral-escuro` para o cartão "Inglês". Reaproveitado
+     pelo cartão "Memória", que nasceu com um token próprio de mesmo hex. */
   --color-anemona: #b16cff;
+  /* Laranja tangerina: cor do cartão "Letras". Nasceu como `--color-lilas`
+     com o MESMO hex do roxo anêmona — dois tokens para uma cor só. Em vez de
+     manter a duplicata, "Letras" ganhou um matiz que ainda não existia na
+     paleta: laranja saturado, longe do verde alga (Animais) e do azul
+     mar-500 (Aquário), que são os vizinhos na grade, e longe também do coral
+     rosado da Família. Contraste com `--color-tinta`: 8.7:1. */
+  --color-tangerina: #ff9f1c;
   --color-espuma: #fdf6e3; /* texto claro */
   --color-tinta: #2b1006; /* texto sobre cores claras */
 
