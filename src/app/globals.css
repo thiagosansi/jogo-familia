@@ -21,6 +21,11 @@
   --color-areia: #ffd166; /* amarelo areia (destaque) */
   --color-agua: #3ddad7; /* verde-água */
   --color-alga: #2fbf71; /* verde alga (acerto) */
+  /* Lilás: mesma família do roxo da "bolha" em cores.ts (#b16cff) — cor nova
+     na paleta para o card "Letras" da home não repetir tom com os vizinhos
+     (aquário em mar-500, inglês em coral-escuro), mesmo motivo documentado em
+     `src/app/page.tsx` para `--color-coral-escuro`. */
+  --color-lilas: #b16cff;
   --color-espuma: #fdf6e3; /* texto claro */
   --color-tinta: #2b1006; /* texto sobre cores claras */
 

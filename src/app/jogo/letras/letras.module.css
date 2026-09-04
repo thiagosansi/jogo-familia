@@ -1,0 +1,99 @@
+/* Estilos próprios do modo "letras". O resto (peça/sumindo/tremendo, botão de
+   voltar) vem de `@/components/objetos/objetos.module.css` — mesmo padrão
+   visual dos outros modos, para não inventar uma segunda linguagem visual de
+   bolha/toque. */
+
+/* ------------------------------------------------------------------ glifo */
+
+/* O GLIFO é o desenho (mesmo espírito de `.letra` em `Album.module.css`):
+   nem toda alternativa deste modo tem silhueta — a letra É o símbolo que a
+   criança está aprendendo a reconhecer. `--tamanho` (custom property, mesmo
+   padrão de `<Personagem>`/`<ObjetoMar>`) tem um padrão que combina com o
+   tamanho de uma alternativa comum (`.peca`, clamp 88-170px); a cena de
+   "Som inicial" e os ícones da tela de escolha passam um valor explícito via
+   `style`. */
+.glifo {
+  --tamanho: clamp(64px, 20vmin, 130px);
+  display: grid;
+  place-items: center;
+  inline-size: var(--tamanho);
+  block-size: var(--tamanho);
+  font-weight: 800;
+  font-size: calc(var(--tamanho) * 0.6);
+  line-height: 1;
+  /* Nunca minúscula, mesmo se algum dia vier de um dado salvo em caixa baixa. */
+  text-transform: uppercase;
+  color: var(--color-espuma, #fdf6e3);
+  /* Não deixa o dedo/cursor selecionar o texto ao tocar. */
+  user-select: none;
+}
+
+/* -------------------------------------------------- tela de escolha */
+
+/* "Som inicial": o glifo de exemplo ao lado de um peixinho — a dupla letra +
+   desenho é a própria mecânica do subjogo. Mesmo layout de `.iconeDupla` em
+   ingles.module.css. */
+.iconeSom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+/* `<ObjetoMar>` não tem prop `tamanho` — só CSS Module dá para dimensionar.
+   Mesma medida de `.pontoIcone` em ingles.module.css. */
+.pontoIcone {
+  inline-size: clamp(28px, 7vmin, 60px);
+}
+
+/* "Cadê a letra?": três glifos lado a lado — o cartão já mostra a mecânica
+   (procurar entre letras). */
+.iconeCade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+/* ------------------------------------------------------ trocar de subjogo */
+
+/* Volta para a tela de escolha sem sair do jogo. Canto inferior DIREITO:
+   longe do `<BotaoVoltar>` (inferior esquerdo, 88px) — mesmo padrão/medidas
+   de `.trocar` em `/jogo/ingles/ingles.module.css`. */
+.trocar {
+  position: fixed;
+  inset-block-end: max(8px, env(safe-area-inset-bottom));
+  inset-inline-end: max(8px, env(safe-area-inset-right));
+  min-inline-size: var(--toque-min);
+  min-block-size: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding-inline: clamp(14px, 2.5vmin, 26px);
+  border: 4px solid color-mix(in srgb, var(--color-espuma) 35%, transparent);
+  border-radius: var(--raio);
+  background: color-mix(in srgb, var(--color-mar-900) 70%, transparent);
+  color: var(--color-espuma);
+  font: inherit;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 2.4vmin, 1.3rem);
+  cursor: pointer;
+  z-index: 2;
+  transition: transform var(--anim-rapida) ease, opacity var(--anim-rapida) ease;
+}
+.trocar svg {
+  inline-size: 1.3em;
+  block-size: auto;
+}
+.trocar:active {
+  transform: scale(0.94);
+}
+/* Só ativo perguntando (ver page.tsx) — trocar durante "quaseLa"/comemoração
+   cortaria a tentativa ou a festa no meio. Continua visível, só perde ação. */
+.trocar:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
