@@ -142,32 +142,6 @@ const MODOS: Modo[] = [
     ),
   },
   {
-    id: "aquario",
-    href: "/jogo/aquario",
-    rotulo: "Aquário",
-    cor: "var(--color-mar-500)",
-    icone: (
-      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
-        <rect x="8" y="10" width="104" height="78" rx="16" fill="#0e4d7a" />
-        <rect
-          x="8"
-          y="10"
-          width="104"
-          height="78"
-          rx="16"
-          fill="none"
-          stroke="#2b1006"
-          strokeWidth="7"
-        />
-        <ellipse cx="54" cy="50" rx="22" ry="15" fill="#ff7a5c" />
-        <path d="M76 50l16-12v24z" fill="#ff7a5c" />
-        <circle cx="44" cy="46" r="3.5" fill="#2b1006" />
-        <circle cx="88" cy="26" r="5" fill="#ffd166" />
-        <circle cx="30" cy="72" r="6" fill="#ffd166" />
-      </svg>
-    ),
-  },
-  {
     id: "letras",
     href: "/jogo/letras",
     rotulo: "Letras",
@@ -218,6 +192,76 @@ const MODOS: Modo[] = [
         <circle cx="93" cy="27" r="2.5" fill="#2b1006" />
         <ellipse cx="30" cy="60" rx="22" ry="10" fill="#2fbf71" transform="rotate(-25 30 60)" />
         <ellipse cx="35" cy="78" rx="20" ry="9" fill="#3ddad7" transform="rotate(35 35 78)" />
+      </svg>
+    ),
+  },
+  {
+    id: "memoria",
+    href: "/jogo/memoria",
+    rotulo: "Memória",
+    // Roxo anêmona: mesmo token do cartão "Números" (nasceram em ramos
+    // separados, cada um com um token próprio de hex idêntico — sobrou um
+    // só). Os dois não se encostam na grade, e nenhum vizinho de Memória
+    // puxa para o roxo: Inglês é coral-escuro, Aquário é azul mar-500.
+    cor: "var(--color-anemona)",
+    icone: (
+      // Duas cartas, uma virada para baixo e outra mostrando um par — a
+      // metáfora do jogo sem depender de texto (a criança não lê).
+      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
+        <rect
+          x="8"
+          y="16"
+          width="44"
+          height="64"
+          rx="9"
+          fill="#0e4d7a"
+          stroke="#2b1006"
+          strokeWidth="7"
+          transform="rotate(-8 30 48)"
+        />
+        <circle cx="29" cy="47" r="10" fill="#3ddad7" transform="rotate(-8 30 48)" />
+        <rect
+          x="66"
+          y="16"
+          width="44"
+          height="64"
+          rx="9"
+          fill="#fdf6e3"
+          stroke="#2b1006"
+          strokeWidth="7"
+          transform="rotate(8 88 48)"
+        />
+        <g transform="rotate(8 88 48)">
+          <ellipse cx="85" cy="47" rx="15" ry="10" fill="#ff7a5c" />
+          <path d="M100 47l11-8v16z" fill="#ff7a5c" />
+          <circle cx="78" cy="44" r="2.6" fill="#2b1006" />
+        </g>
+      </svg>
+    ),
+  },
+  {
+    id: "aquario",
+    href: "/jogo/aquario",
+    rotulo: "Aquário",
+    cor: "var(--color-mar-500)",
+    icone: (
+      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
+        <rect x="8" y="10" width="104" height="78" rx="16" fill="#0e4d7a" />
+        <rect
+          x="8"
+          y="10"
+          width="104"
+          height="78"
+          rx="16"
+          fill="none"
+          stroke="#2b1006"
+          strokeWidth="7"
+        />
+        <ellipse cx="54" cy="50" rx="22" ry="15" fill="#ff7a5c" />
+        <path d="M76 50l16-12v24z" fill="#ff7a5c" />
+        <circle cx="44" cy="46" r="3.5" fill="#2b1006" />
+        <circle cx="88" cy="26" r="5" fill="#ffd166" />
+        <circle cx="30" cy="72" r="6" fill="#ffd166" />
       </svg>
     ),
   },
