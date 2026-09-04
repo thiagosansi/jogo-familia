@@ -1,6 +1,7 @@
 /**
  * <ObjetoMar> — as cinco silhuetas do fundo do mar usadas pelos modos
- * "cores e formas" e "contar de 1 a 5". ARTE ORIGINAL, desenhada à mão em SVG
+ * "cores e formas", "contar de 1 a 10" e "números". ARTE ORIGINAL, desenhada
+ * à mão em SVG
  * (nada de personagem de terceiros, nada de biblioteca de ícones).
  *
  *   <ObjetoMar forma="concha" cor="#3a86ff" rotulo="concha azul" />

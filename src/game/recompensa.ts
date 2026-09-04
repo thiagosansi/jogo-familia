@@ -7,7 +7,7 @@
  *
  *   familia-<idDoPersonagem>   → o rosto que ela reconheceu
  *   cor-<corId>                → a peça que ela pegou       (cores.ts)
- *   contar-<1..5>              → o cardume que ela contou   (contar.ts)
+ *   contar-<1..10>             → o cardume que ela contou   (contar.ts, numeros.ts)
  *   animal-<idAnimal>          → o bicho que ela adivinhou  (animais.ts)
  *   ingles-<idPalavra>         → a palavra que ela ouviu    (ingles.ts)
  *   letra-<A..Z>               → a letra que ela achou      (letras.ts)
@@ -27,6 +27,7 @@
  */
 
 import { CORES, FORMAS, nomeDaPeca, type FormaObjeto } from "./modos/cores.ts";
+import { MAX_CONTAGEM } from "./modos/contar.ts";
 import { ANIMAIS, type IdAnimal } from "./modos/animais.ts";
 import type { Mascote } from "@/components/Personagem";
 import type { Eixo, Figurinha } from "@/lib/tipos";
@@ -56,7 +57,9 @@ export function idFigurinha(eixo: Eixo, chave: string | number): string {
 export const TOTAL_DO_EIXO: Record<Eixo, number | null> = {
   familia: null,
   cores: CORES.length,
-  contar: 5,
+  // Uma figurinha por quantidade contada (1..10). Derivado de `MAX_CONTAGEM`
+  // — o denominador do relatório do adulto acompanha o teto do jogo sozinho.
+  contar: MAX_CONTAGEM,
   animais: ANIMAIS.length,
   // `ingles` também é `null` de propósito, pelo MESMO motivo de `familia`
   // acima: o total varia com o cadastro. Contagem real do catálogo (ver
@@ -88,7 +91,7 @@ export const TOTAL_DO_EIXO: Record<Eixo, number | null> = {
 export const NOME_DO_EIXO: Record<Eixo, string> = {
   familia: "Quem é quem",
   cores: "Cores e formas",
-  contar: "Contar até 5",
+  contar: "Contar até 10",
   animais: "Animais",
   ingles: "Primeiras palavras em inglês",
   letras: "Letras e sons",
@@ -176,7 +179,7 @@ export function desenhoDaFigurinha(id: string): DesenhoFigurinha {
 
   if (id.startsWith(PREFIXO.contar)) {
     const n = Number(id.slice(PREFIXO.contar.length));
-    if (Number.isInteger(n) && n >= 1 && n <= 5) {
+    if (Number.isInteger(n) && n >= 1 && n <= MAX_CONTAGEM) {
       return { tipo: "cardume", quantidade: n, forma: "peixe", cor: COR_CARDUME };
     }
   }

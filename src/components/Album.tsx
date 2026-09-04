@@ -193,8 +193,20 @@ function Traco({
 
     case "cardume":
       // A quantidade É o desenho: a criança vê três peixinhos, não o "3".
+      //
+      // `--colunas` = √quantidade arredondada para cima — a grade mais
+      // "quadrada" possível, que é a que melhor aproveita um círculo. Sem
+      // isso a largura de cada peixinho era fixa em 40% (duas colunas) e um
+      // cardume de 10 (o teto do modo Contar desde que ele passou a ir até
+      // 10) transbordava a bolha em cinco fileiras. Ver `.cardume` no CSS.
       return (
-        <span className={estilos.cardume} aria-hidden="true">
+        <span
+          className={estilos.cardume}
+          style={
+            { "--colunas": Math.ceil(Math.sqrt(desenho.quantidade)) } as React.CSSProperties
+          }
+          aria-hidden="true"
+        >
           {Array.from({ length: desenho.quantidade }, (_, i) => (
             <ObjetoMar key={i} forma={desenho.forma} cor={desenho.cor} giro={(i % 2) * 12 - 6} />
           ))}
