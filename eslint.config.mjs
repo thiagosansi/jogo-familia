@@ -6,13 +6,18 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores([
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
+    // Recursivo (`**/`) de propósito: além do build da raiz, o repositório
+    // hospeda git worktrees em `.claude/worktrees/<agente>/`, cada uma com o
+    // seu próprio `.next/` e `public/sw.js` gerados. Sem o `**/`, o `eslint`
+    // sem argumento varre esses artefatos e falha com milhares de erros em
+    // código que ninguém escreveu.
+    "**/.next/**",
+    "**/out/**",
+    "**/build/**",
+    "**/next-env.d.ts",
     // Service worker gerado pelo Serwist no build.
-    "public/sw.js",
-    "public/swe-worker-*.js",
+    "**/public/sw.js",
+    "**/public/swe-worker-*.js",
   ]),
 ]);
 
