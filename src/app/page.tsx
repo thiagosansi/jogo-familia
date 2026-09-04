@@ -84,6 +84,46 @@ const MODOS: Modo[] = [
     ),
   },
   {
+    id: "numeros",
+    href: "/jogo/numeros",
+    rotulo: "Números",
+    // Roxo anêmona: cor NOVA na paleta (ver `--color-anemona` em
+    // globals.css). Todas as cores claras já eram cartão de algum modo, e as
+    // escuras que sobravam (`--color-mar-700` e abaixo) apagavam o rótulo e o
+    // desenho, que `.card-modo` escreve em `--color-tinta`. Roxo também não
+    // repete tom com nenhum vizinho — Contar (`--color-agua`) de um lado,
+    // Animais (`--color-alga`) do outro.
+    cor: "var(--color-anemona)",
+    icone: (
+      // Ábaco: contas enfiadas em três varetas. Escolhido em vez de um
+      // algarismo porque a home é navegada por DESENHO — a criança não lê, e
+      // o "7" que este modo ensina é o conteúdo de dentro da rodada, não o
+      // rótulo da porta. Também não repete o desenho do cartão "Contar"
+      // (bolinhas em escada), que é o modo vizinho.
+      <svg viewBox="0 0 120 96" aria-hidden="true" focusable="false">
+        <g fill="#2b1006">
+          <rect x="6" y="6" width="12" height="84" rx="6" />
+          <rect x="102" y="6" width="12" height="84" rx="6" />
+          <rect x="14" y="20" width="92" height="8" rx="4" />
+          <rect x="14" y="44" width="92" height="8" rx="4" />
+          <rect x="14" y="68" width="92" height="8" rx="4" />
+        </g>
+        <g fill="#ffd166">
+          <circle cx="34" cy="24" r="11" />
+          <circle cx="58" cy="24" r="11" />
+        </g>
+        <g fill="#ff7a5c">
+          <circle cx="34" cy="48" r="11" />
+          <circle cx="58" cy="48" r="11" />
+          <circle cx="82" cy="48" r="11" />
+        </g>
+        <g fill="#3ddad7">
+          <circle cx="34" cy="72" r="11" />
+        </g>
+      </svg>
+    ),
+  },
+  {
     id: "animais",
     href: "/jogo/animais",
     rotulo: "Animais",

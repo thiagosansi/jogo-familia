@@ -1,0 +1,246 @@
+/* Estilos do modo "números" (/jogo/numeros).
+
+   Tudo em cima dos tokens de globals.css (--toque-min, --gap, --raio,
+   --anim-*), então `prefers-reduced-motion` já desliga o movimento sem
+   precisar de exceção — as poucas animações daqui têm o bloco de reduce no
+   fim mesmo assim, porque desligar a animação NÃO pode esconder o desenho.
+
+   O que este arquivo NÃO faz: layout de rodada (é do `<Palco>`), bolha de
+   alternativa (é do `<BotaoAlternativa>`) e tela de escolha (é do
+   `<TelaEscolha>`, que usa as classes GLOBAIS da home de propósito). */
+
+/* --------------------------------------------------------------- a cena */
+
+/* O cardume que a criança tem que contar, dentro do slot `cena` do
+   `<Palco>` (decorativo, `pointer-events: none` lá). Quebra linha porque o
+   modo vai até 10 objetos e dez silhuetas não cabem numa linha de celular em
+   retrato — duas fileiras de cinco também são mais fáceis de contar. */
+.cardume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1.4vmin, 12px);
+  max-inline-size: min(100%, 640px);
+}
+
+/* Cada bichinho da cena. Menor que a peça de uma alternativa
+   (`objetos.module.css .peca`, mínimo 88px) porque aqui NÃO é alvo de toque —
+   o alvo é o algarismo lá embaixo —, e porque dez deles precisam caber. */
+.bicho {
+  inline-size: clamp(30px, 8vmin, 64px);
+  block-size: auto;
+  flex: 0 0 auto;
+}
+
+/* Somar: os dois grupos ficam VISÍVEIS o tempo todo, separados por um vão
+   maior que o espaço entre bichinhos do mesmo grupo. Somar aos 5 anos é
+   contar tudo de novo (ver o cabeçalho de `@/game/modos/numeros`), então
+   fazer o primeiro grupo sumir tiraria justamente o que a criança conta.
+
+   Nenhum sinal de "+" entre eles de propósito: a criança não lê símbolos de
+   operação, e a conta inteira já é falada na pergunta. */
+.grupos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(18px, 6vmin, 56px);
+  max-inline-size: min(100%, 680px);
+}
+
+/* O vão entre os grupos vira uma linha d'água discreta quando há espaço: a
+   separação tem que ser óbvia mesmo para quem não percebe a diferença de
+   distância entre os bichinhos. */
+.grupo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1.4vmin, 12px);
+  padding: clamp(4px, 1.2vmin, 10px);
+  border-radius: var(--raio, 32px);
+  background: color-mix(in srgb, var(--color-mar-900, #041d33) 45%, transparent);
+}
+
+/* O segundo grupo é o que "chegou": entra deslizando uma vez por rodada (a
+   `key` da rodada remonta o elemento). É o que conta a história da pergunta
+   falada — "chegaram dois e mais um" — sem nenhuma palavra escrita. */
+.chegando {
+  animation: chegar calc(var(--anim-media, 420ms) * 1.6) cubic-bezier(0.2, 1.2, 0.4, 1) 1;
+}
+
+@keyframes chegar {
+  from {
+    opacity: 0;
+    transform: translateX(28%) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------- o algarismo */
+
+/* A ÚNICA coisa escrita na tela deste modo, e é o conteúdo ensinado: o
+   símbolo que a criança está aprendendo a reconhecer, do mesmo jeito que o
+   glifo é o conteúdo do modo Letras. Herdado do `.algarismo` de
+   `../ingles/ingles.module.css` (baralho de números), só que aqui ele ocupa a
+   bolha inteira — lá divide espaço com os peixinhos desenhados.
+
+   NUNCA use esta classe para um contador, um placar ou um cronômetro: é
+   exatamente a regra do produto que o algarismo aqui NÃO quebra (ver o
+   cabeçalho de `@/game/recompensa`). */
+.algarismo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  block-size: 100%;
+  min-inline-size: clamp(56px, 16vmin, 130px);
+  min-block-size: clamp(56px, 16vmin, 130px);
+  color: var(--color-espuma, #fdf6e3);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 13vmin, 6rem);
+  line-height: 1;
+  text-shadow: 0 4px 8px rgb(0 0 0 / 0.45);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Acertou: o algarismo comemora junto com a bolha (a bolha já pulsa via
+   `[data-acertou]` no `<Palco>`). */
+.acertou {
+  animation: pulsar calc(var(--anim-media, 420ms) * 1.4) ease-in-out 2;
+}
+/* Errou: balança de leve. Nunca some, nunca marca de vermelho — não existe
+   errar aqui, existe "quase". */
+.errou {
+  animation: balancar var(--anim-media, 420ms) ease-in-out 2;
+}
+
+@keyframes pulsar {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes balancar {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-7deg);
+  }
+  75% {
+    transform: rotate(7deg);
+  }
+}
+
+/* -------------------------------------------------- trocar de brincadeira */
+
+/* "Trocar": volta à tela de escolha sem sair do jogo. Obrigatório porque a
+   escolha fica LEMBRADA no aparelho (`useEscolhaLembrada`) — sem este botão,
+   quem escolheu "Somar no mar" uma vez nunca mais veria "Quantos tem?".
+   Mesmo desenho e mesma posição do de `/jogo/ingles`: canto inferior direito,
+   longe do voltar (inferior esquerdo) e do `<AvisoVoz>`. */
+.trocar {
+  position: fixed;
+  inset-block-end: max(8px, env(safe-area-inset-bottom));
+  inset-inline-end: max(8px, env(safe-area-inset-right));
+  min-inline-size: var(--toque-min, 88px);
+  min-block-size: var(--toque-min, 88px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding-inline: clamp(14px, 2.5vmin, 26px);
+  border: 4px solid color-mix(in srgb, var(--color-espuma, #fdf6e3) 35%, transparent);
+  border-radius: var(--raio, 32px);
+  background: color-mix(in srgb, var(--color-mar-900, #041d33) 70%, transparent);
+  color: var(--color-espuma, #fdf6e3);
+  font: inherit;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 2.4vmin, 1.3rem);
+  cursor: pointer;
+  z-index: 2;
+  transition: transform var(--anim-rapida, 160ms) ease, opacity var(--anim-rapida, 160ms) ease;
+}
+.trocar svg {
+  inline-size: 1.3em;
+  block-size: auto;
+}
+.trocar:active {
+  transform: scale(0.94);
+}
+/* Só ativo perguntando (ver page.tsx) — trocar durante "quaseLa"/comemoração
+   cortaria a tentativa ou a festa no meio. Continua visível, só perde ação. */
+.trocar:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ------------------------------------------------ ícones da tela de escolha */
+
+/* "Quantos tem?": um punhado de bichinhos, sem nenhum algarismo — não existe
+   uma resposta certa no cartão, só a ideia de "contar o que está aí". */
+.iconeQuantos {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 8px;
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+
+/* "Somar no mar": os dois grupos que a rodada vai mostrar, com o mesmo vão e
+   o mesmo fundo de `.grupo` — o cartão já ensaia o desenho da brincadeira.
+
+   `flex-wrap: nowrap` nos grupos (e bichinhos menores): medido no navegador,
+   com quebra de linha as duas conchas do primeiro grupo empilhavam na
+   diagonal e o cartão deixava de ler como "dois de um lado, um do outro",
+   que é a única coisa que ele precisa comunicar. */
+.iconeSomar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 3vmin, 24px);
+  inline-size: clamp(130px, 26vmin, 270px);
+}
+.iconeGrupo {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(3px, 1vmin, 8px);
+  padding: clamp(4px, 1.2vmin, 10px);
+  border-radius: var(--raio, 32px);
+  background: color-mix(in srgb, var(--color-mar-900, #041d33) 30%, transparent);
+}
+.iconeGrupo .pontoIcone {
+  inline-size: clamp(20px, 5vmin, 42px);
+}
+
+.pontoIcone {
+  inline-size: clamp(28px, 7vmin, 60px);
+  flex: 0 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chegando,
+  .acertou,
+  .errou {
+    animation: none !important;
+  }
+  /* Sem animação o grupo que chegou continua VISÍVEL — a cena é o conteúdo
+     da pergunta, esconder seria esconder a conta. */
+  .chegando {
+    opacity: 1;
+    transform: none;
+  }
+}
