@@ -22,13 +22,14 @@ import {
   getProgresso,
   gravarProgresso,
   listarPersonagens,
+  normalizarBlobs,
   PROGRESSO_ID,
   reconciliarModosAtivos,
   removerPersonagem,
   salvarPersonagem,
   setConfig,
 } from "./db.ts";
-import type { Progresso } from "./tipos.ts";
+import type { Personagem, Progresso } from "./tipos.ts";
 
 // PNG 1x1 vermelho — faz as vezes de "foto já redimensionada".
 const PNG_1X1 = Buffer.from(
@@ -68,6 +69,69 @@ test("grava um Blob de foto e recupera após 'reload' da página", async () => {
 
   await removerPersonagem(p.id);
   assert.equal((await listarPersonagens()).length, 0);
+});
+
+test("normalizarBlobs troca cada Blob por uma cópia via arrayBuffer()", async () => {
+  const foto = new Blob([PNG_1X1], { type: "image/png" });
+  const voz = new Blob([new Uint8Array([9, 9, 9])], { type: "audio/webm" });
+  const registro: Personagem = {
+    id: "x",
+    nome: "Teste",
+    papel: "mae",
+    fotoRecorte: foto,
+    vozNome: voz,
+    vozFesta: null,
+    criadoEm: 1,
+  };
+
+  const normalizado = await normalizarBlobs(registro);
+
+  assert.notEqual(normalizado.fotoRecorte, foto, "deve ser um Blob novo, não o mesmo objeto");
+  assert.ok(normalizado.fotoRecorte instanceof Blob);
+  assert.equal(normalizado.fotoRecorte.size, foto.size);
+  assert.equal(normalizado.fotoRecorte.type, foto.type);
+
+  assert.ok(normalizado.vozNome instanceof Blob);
+  assert.notEqual(normalizado.vozNome, voz);
+  assert.equal(normalizado.vozNome?.size, voz.size);
+
+  assert.equal(normalizado.vozFesta, null);
+});
+
+test("salvarPersonagem tenta de novo com Blobs normalizados se o primeiro put falhar", async () => {
+  const foto = new Blob([PNG_1X1], { type: "image/png" });
+  const db = await getDB();
+  const putOriginal = db.put.bind(db);
+  let chamadas = 0;
+  // Simula o bug do WebKit: primeira tentativa falha ao gravar o Blob "cru".
+  db.put = ((...args: Parameters<typeof putOriginal>) => {
+    chamadas += 1;
+    if (chamadas === 1) {
+      return Promise.reject(new DOMException("Falha simulada", "DataCloneError"));
+    }
+    return putOriginal(...args);
+  }) as typeof putOriginal;
+
+  try {
+    const salvo = await salvarPersonagem({
+      nome: "Vovó",
+      papel: "parente",
+      fotoRecorte: foto,
+      vozNome: null,
+      vozFesta: null,
+    });
+
+    assert.equal(chamadas, 2, "deve ter tentado de novo após a primeira falha");
+    assert.ok(salvo.fotoRecorte instanceof Blob);
+    assert.equal(salvo.fotoRecorte.size, PNG_1X1.byteLength);
+  } finally {
+    // Descarta a conexão memoizada (com o put ainda remendado) antes de seguir.
+    _resetDB();
+  }
+
+  const lidos = await listarPersonagens();
+  assert.equal(lidos.length, 1);
+  await removerPersonagem(lidos[0].id);
 });
 
 test("config tem default de limite desligado (0) e persiste alterações", async () => {

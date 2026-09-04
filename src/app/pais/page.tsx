@@ -96,6 +96,7 @@ function Painel() {
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [fotoBruta, setFotoBruta] = useState<Blob | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const entradaArquivo = useRef<HTMLInputElement | null>(null);
   const entradaPacote = useRef<HTMLInputElement | null>(null);
 
@@ -126,18 +127,32 @@ function Painel() {
 
   const salvar = async () => {
     if (!rascunho?.fotoRecorte || !rascunho.nome.trim()) return;
-    await salvarPersonagem({
-      id: rascunho.id,
-      criadoEm: rascunho.criadoEm,
-      nome: rascunho.nome.trim(),
-      papel: rascunho.papel,
-      fotoRecorte: rascunho.fotoRecorte,
-      vozNome: rascunho.vozNome,
-      vozFesta: rascunho.vozFesta,
-    });
-    setRascunho(null);
-    setRecado(null);
-    await recarregar();
+    setSalvando(true);
+    try {
+      await salvarPersonagem({
+        id: rascunho.id,
+        criadoEm: rascunho.criadoEm,
+        nome: rascunho.nome.trim(),
+        papel: rascunho.papel,
+        fotoRecorte: rascunho.fotoRecorte,
+        vozNome: rascunho.vozNome,
+        vozFesta: rascunho.vozFesta,
+      });
+      setRascunho(null);
+      setRecado(null);
+      await recarregar();
+    } catch (e) {
+      console.error("Falha ao salvar personagem:", e);
+      // `DOMException` (comum em falhas do IndexedDB, ex.: QuotaExceededError)
+      // não é instância de `Error`, mas tem os mesmos campos `name`/`message`.
+      const { name, message } =
+        e instanceof Error || e instanceof DOMException
+          ? e
+          : { name: "Erro", message: String(e) };
+      setRecado(`Não consegui salvar: ${name} — ${message}`);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const excluir = async (p: Personagem) => {
@@ -400,6 +415,7 @@ function Painel() {
                 <button
                   type="button"
                   className={estilos.acao}
+                  disabled={salvando}
                   onClick={() => setRascunho(null)}
                 >
                   Cancelar
@@ -408,14 +424,19 @@ function Painel() {
                   type="button"
                   className={`${estilos.acao} ${estilos.acaoPrimaria}`}
                   data-teste="salvar-personagem"
-                  disabled={!rascunho.fotoRecorte || !rascunho.nome.trim()}
+                  disabled={!rascunho.fotoRecorte || !rascunho.nome.trim() || salvando}
                   onClick={() => void salvar()}
                 >
-                  Salvar
+                  {salvando ? "Salvando…" : "Salvar"}
                 </button>
               </div>
               {!rascunho.fotoRecorte && (
                 <p className={estilos.ajuda}>Falta a foto para poder salvar.</p>
+              )}
+              {recado && (
+                <p className={estilos.recado} role="status" data-teste="recado-formulario">
+                  {recado}
+                </p>
               )}
             </>
           )}

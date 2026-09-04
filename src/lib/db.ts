@@ -216,12 +216,39 @@ export async function getPersonagem(id: string): Promise<Personagem | undefined>
   return db.get("personagens", id);
 }
 
+/** `true` só para o estouro de quota — nesse caso normalizar o Blob não ajuda. */
+function ehErroDeQuota(erro: unknown): boolean {
+  return erro instanceof DOMException && erro.name === "QuotaExceededError";
+}
+
+/**
+ * Troca cada Blob do registro por uma cópia criada via `arrayBuffer()`.
+ *
+ * Contorna um bug conhecido do WebKit: às vezes ele recusa gravar no
+ * IndexedDB um Blob/File "cru" que veio direto de `<input type=file>` ou de
+ * `canvas.toBlob` (falha silenciosa ou `DataCloneError`). Recriar o Blob a
+ * partir dos próprios bytes resolve.
+ */
+export async function normalizarBlobs(registro: Personagem): Promise<Personagem> {
+  const normalizar = async (blob: Blob | null): Promise<Blob | null> =>
+    blob ? new Blob([await blob.arrayBuffer()], { type: blob.type }) : null;
+  return {
+    ...registro,
+    fotoRecorte: (await normalizar(registro.fotoRecorte)) as Blob,
+    vozNome: await normalizar(registro.vozNome),
+    vozFesta: await normalizar(registro.vozFesta),
+  };
+}
+
 /**
  * Cria ou atualiza um familiar. `id` e `criadoEm` são preenchidos quando
  * ausentes, então a tela de cadastro só precisa passar nome/papel/foto/vozes.
  *
  * IMPORTANTE: a foto DEVE ter passado por `redimensionarImagem` — o IndexedDB
  * tem quota e uma foto crua de câmera (5-10 MB) estoura o orçamento rápido.
+ *
+ * Se `put` falhar (e não for quota estourada), tenta UMA vez com os Blobs
+ * normalizados (ver `normalizarBlobs`) antes de propagar o erro.
  */
 export async function salvarPersonagem(
   personagem: Omit<Personagem, "id" | "criadoEm"> & Partial<Pick<Personagem, "id" | "criadoEm">>,
@@ -232,8 +259,15 @@ export async function salvarPersonagem(
     criadoEm: personagem.criadoEm ?? Date.now(),
   };
   const db = await getDB();
-  await db.put("personagens", registro);
-  return registro;
+  try {
+    await db.put("personagens", registro);
+    return registro;
+  } catch (erro) {
+    if (ehErroDeQuota(erro)) throw erro;
+    const normalizado = await normalizarBlobs(registro);
+    await db.put("personagens", normalizado);
+    return normalizado;
+  }
 }
 
 export async function removerPersonagem(id: string): Promise<void> {
