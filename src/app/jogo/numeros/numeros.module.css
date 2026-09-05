@@ -27,6 +27,10 @@
 /* Cada bichinho da cena. Menor que a peça de uma alternativa
    (`objetos.module.css .peca`, mínimo 88px) porque aqui NÃO é alvo de toque —
    o alvo é o algarismo lá embaixo —, e porque dez deles precisam caber.
+   Piso de 40px (em vez dos 30px antigos) porque num celular de 390px o clamp
+   batia no mínimo e os bichinhos ficavam pequenos demais para contar com
+   conforto; 10 bichinhos de 40px + os vãos ainda quebram em duas fileiras de
+   cinco dentro do `max-inline-size` do `.cardume`, que é o layout pretendido.
 
    Escopado sob `.cardume`/`.grupo` (as duas cenas que usam `<Bichinhos>`) de
    propósito: `<ObjetoMar>` já vem com `inline-size: 100%` (`.objeto` em
@@ -37,7 +41,7 @@
    importa a ordem dos stylesheets. */
 .cardume .bicho,
 .grupo .bicho {
-  inline-size: clamp(30px, 8vmin, 64px);
+  inline-size: clamp(40px, 9vmin, 64px);
   block-size: auto;
   flex: 0 0 auto;
 }
