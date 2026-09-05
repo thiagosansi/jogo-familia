@@ -61,7 +61,13 @@
   inline-size: 92%;
 }
 
-.pontoContagem {
+/* Escopado sob `.contagem` de propósito: `<ObjetoMar>` já vem com
+   `inline-size: 100%` (`.objeto` em objetos.module.css) e uma classe solta
+   de mesma especificidade dependeria de qual stylesheet carrega por último —
+   no build de produção essa ordem NÃO é garantida (ver o comentário de
+   `.grande`/`.pequeno` mais abaixo). Com `.contagem .pontoContagem` (duas
+   classes) este seletor sempre vence `.objeto`, não importa a ordem. */
+.contagem .pontoContagem {
   inline-size: 18%;
   min-inline-size: 11px;
   max-inline-size: 26px;
@@ -82,11 +88,14 @@
   inline-size: clamp(130px, 26vmin, 270px);
 }
 
-/* `<ObjetoMar>` não tem prop `tamanho` (ver o componente) — só CSS Module
-   dá para dimensionar. Vence `.objeto`/`.card-modo svg` (globals.css): CSS
-   Modules nunca entram em @layer, então sempre ganham de regras em @layer,
-   não importa a especificidade. */
-.pontoMisturado {
+/* `<ObjetoMar>` não tem prop `tamanho` (ver o componente) — só CSS Module dá
+   para dimensionar. Vence `.card-modo svg` (globals.css) de qualquer jeito:
+   CSS Modules nunca entram em @layer, então sempre ganham de regras em
+   @layer, não importa a especificidade. MAS `.objeto` (objetos.module.css)
+   também não está em @layer — contra ele o empate é de especificidade
+   (ambos uma classe só), por isso o escopo `.iconeMisturado .pontoMisturado`
+   (duas classes), que vence sempre, não importa a ordem dos stylesheets. */
+.iconeMisturado .pontoMisturado {
   inline-size: clamp(28px, 7vmin, 60px);
 }
 
@@ -105,7 +114,14 @@
   inline-size: clamp(130px, 26vmin, 270px);
 }
 
-.pontoIcone {
+/* `.pontoIcone` aparece em três cartões diferentes (`.iconeContagem`,
+   `.iconeDupla`, `.iconeCores`) — por isso o seletor composto lista os três
+   em vez de um só `.pontoIcone` solto: uma classe solta empataria em
+   especificidade com `.objeto` (objetos.module.css) e dependeria da ordem
+   dos stylesheets, que no build de produção não é garantida. */
+.iconeContagem .pontoIcone,
+.iconeDupla .pontoIcone,
+.iconeCores .pontoIcone {
   inline-size: clamp(28px, 7vmin, 60px);
 }
 
@@ -162,19 +178,29 @@
 
 /* Tamanho do `<ObjetoMar>` DENTRO de uma alternativa de verdade (nível 2 do
    baralho `frases` pede para achar o tamanho certo, não só a cor) — mesma
-   armadilha do `.pontoContagem` acima: `<ObjetoMar>` já vem com
-   `inline-size: 100%` (objetos.module.css); como CSS Modules nunca entram em
-   `@layer`, a classe que chega depois no className (`className` combinado em
-   `<ObjetoMar>`) tem a MESMA especificidade e ganha pela ordem de import —
-   já comprovado pelo `.pontoContagem` de cima, que segue o mesmo padrão.
+   armadilha do `.pontoContagem`/`.pontoIcone` acima: `<ObjetoMar>` já vem com
+   `inline-size: 100%` (`.objeto` em objetos.module.css). CSS Modules nunca
+   entram em `@layer`, então isso NÃO ajuda aqui: `.objeto` também não está
+   em `@layer`, e as duas classes (a de lá, a daqui) têm a MESMA
+   especificidade (uma classe cada). O empate é resolvido por QUAL
+   stylesheet carrega por último — no `next dev` é sempre o CSS da página
+   (por último no HTML), mas no build de produção os chunks de CSS podem
+   linkar em outra ordem (já aconteceu: o chunk de `objetos` carregando
+   depois do da página), e aí `.objeto` ganha e o desenho volta a ocupar
+   100% da bolha. Por isso `.grande`/`.pequeno` usam a classe DOBRADA
+   (`.grande.grande`/`.pequeno.pequeno`): não há um container próprio deste
+   módulo em volta do `<ObjetoMar>` aqui (só `.peca`, de
+   `objetos.module.css`), então dobrar a classe é o jeito de subir a
+   especificidade sem inventar um wrapper novo — e SEMPRE vence `.objeto`,
+   não importa a ordem dos stylesheets.
    "small" ~55% da largura da bolha (pedido do brief), "big" preenche como
    qualquer outro baralho — a classe existe mesmo assim, para o tamanho ficar
    explícito no código, não implícito por "ausência de classe". */
-.grande {
+.grande.grande {
   inline-size: 100%;
 }
 
-.pequeno {
+.pequeno.pequeno {
   inline-size: 55%;
 }
 

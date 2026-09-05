@@ -80,7 +80,14 @@
     0 6px 14px rgb(0 0 0 / 0.28);
   overflow: hidden;
 }
-.figurinha > * {
+/* Classe dobrada (`.figurinha.figurinha`) de propósito: um dos filhos
+   possíveis é um `<ObjetoMar>` sem nenhuma outra classe (casos "objeto" e
+   "carta" de `<Traco>` abaixo), que já vem com `inline-size: 100%`
+   (`.objeto` em objetos.module.css). `.figurinha > *` sozinho teria a MESMA
+   especificidade de `.objeto` (uma classe cada) e dependeria de qual
+   stylesheet carrega por último — não garantido no build de produção.
+   Dobrando a classe daqui, este seletor sempre vence, não importa a ordem. */
+.figurinha.figurinha > * {
   inline-size: 100%;
   block-size: 100%;
 }
@@ -123,7 +130,11 @@
   justify-content: center;
   gap: 4%;
 }
-.cardume > * {
+/* Classe dobrada (`.cardume.cardume`) pelo mesmo motivo de `.figurinha
+   .figurinha` acima: os filhos são `<ObjetoMar>` sem outra classe, e
+   `.cardume > *` sozinho empataria em especificidade com `.objeto`
+   (objetos.module.css), dependendo da ordem dos stylesheets. */
+.cardume.cardume > * {
   inline-size: calc((100% - (var(--colunas) - 1) * 4%) / var(--colunas));
   block-size: auto;
   flex: 0 0 auto;

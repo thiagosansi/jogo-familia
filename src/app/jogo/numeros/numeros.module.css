@@ -26,8 +26,17 @@
 
 /* Cada bichinho da cena. Menor que a peça de uma alternativa
    (`objetos.module.css .peca`, mínimo 88px) porque aqui NÃO é alvo de toque —
-   o alvo é o algarismo lá embaixo —, e porque dez deles precisam caber. */
-.bicho {
+   o alvo é o algarismo lá embaixo —, e porque dez deles precisam caber.
+
+   Escopado sob `.cardume`/`.grupo` (as duas cenas que usam `<Bichinhos>`) de
+   propósito: `<ObjetoMar>` já vem com `inline-size: 100%` (`.objeto` em
+   objetos.module.css) e uma classe solta de mesma especificidade ganharia só
+   por ordem de import — que no build de produção NÃO é garantida (os chunks
+   de CSS podem linkar em ordem diferente da do dev server). Com o
+   seletor composto (duas classes) este `.bicho` sempre vence `.objeto`, não
+   importa a ordem dos stylesheets. */
+.cardume .bicho,
+.grupo .bicho {
   inline-size: clamp(30px, 8vmin, 64px);
   block-size: auto;
   flex: 0 0 auto;
@@ -226,9 +235,16 @@
   inline-size: clamp(20px, 5vmin, 42px);
 }
 
+/* `flex` não compete com `.objeto` (que não define `flex`), então fica solta
+   mesmo — só o `inline-size` precisa de escopo para vencer por
+   especificidade (ver `.iconeQuantos .pontoIcone` abaixo e `.iconeGrupo
+   .pontoIcone` acima). */
 .pontoIcone {
-  inline-size: clamp(28px, 7vmin, 60px);
   flex: 0 0 auto;
+}
+
+.iconeQuantos .pontoIcone {
+  inline-size: clamp(28px, 7vmin, 60px);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -42,8 +42,11 @@
 }
 
 /* `<ObjetoMar>` não tem prop `tamanho` — só CSS Module dá para dimensionar.
-   Mesma medida de `.pontoIcone` em ingles.module.css. */
-.pontoIcone {
+   Mesma medida de `.pontoIcone` em ingles.module.css. Escopado sob
+   `.iconeSom` de propósito: uma classe solta empataria em especificidade com
+   `.objeto` (objetos.module.css) e dependeria da ordem dos stylesheets, que
+   no build de produção não é garantida. */
+.iconeSom .pontoIcone {
   inline-size: clamp(28px, 7vmin, 60px);
 }
 
